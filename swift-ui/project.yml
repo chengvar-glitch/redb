@@ -1,0 +1,39 @@
+name: RedB
+options:
+  bundleIdPrefix: com.redb
+  deploymentTarget:
+    macOS: "13.0"
+  xcodeVersion: "15.0"
+
+settings:
+  SWIFT_VERSION: "5.9"
+
+targets:
+  RedB:
+    type: application
+    platform: macOS
+
+    info:
+      path: RedB/Info.plist
+
+    sources:
+      - RedB
+      - path: RedB/Generated
+        type: group
+        createIntermediateGroups: true
+
+    settings:
+      PRODUCT_BUNDLE_IDENTIFIER: com.redb.app
+      USER_HEADER_SEARCH_PATHS:
+        - "$(SRCROOT)/RedB/Generated"
+      SWIFT_OBJC_BRIDGING_HEADER: "$(SRCROOT)/RedB/RedB-Bridging-Header.h"
+      LIBRARY_SEARCH_PATHS:
+        - "$(SRCROOT)/../target/release"
+      OTHER_LDFLAGS: "-all_load -force_load $(SRCROOT)/../target/release/libredb_core.a -lresolv -lz -framework Security -framework SystemConfiguration"
+      OTHER_LIBTOOLFLAGS: "-all_load -force_load $(SRCROOT)/../target/release/libredb_core.a -lresolv -lz -framework Security -framework SystemConfiguration"
+
+    preBuildScripts:
+      - name: Build Rust Core
+        script: |
+          echo "==> Rust lib prebuilt. Make sure to run scripts/build-rust.sh <=="
+        basedOnDependencyAnalysis: false

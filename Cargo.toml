@@ -1,0 +1,3 @@
+[workspace]
+members = ["rust-core", "gen-bindings"]
+resolver = "2"

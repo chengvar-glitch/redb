@@ -1,0 +1,141 @@
+/// Core data types, annotated with uniffi derives for FFI export.
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize, uniffi::Enum)]
+pub enum DatabaseType {
+    Sqlite,
+    Postgres,
+    MySql,
+    MariaDB,
+    SqlServer,
+    Db2,
+}
+
+#[derive(Debug, Clone, uniffi::Enum)]
+pub enum CellValue {
+    Null,
+    Int(i64),
+    Float(f64),
+    Text(String),
+    Blob(Vec<u8>),
+}
+
+impl std::fmt::Display for CellValue {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            CellValue::Null => write!(f, "NULL"),
+            CellValue::Int(v) => write!(f, "{v}"),
+            CellValue::Float(v) => write!(f, "{v}"),
+            CellValue::Text(v) => write!(f, "{v}"),
+            CellValue::Blob(v) => write!(f, "<blob {} bytes>", v.len()),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, uniffi::Enum)]
+pub enum ConnStatus {
+    Connected,
+    Disconnected,
+    Error { message: String },
+}
+
+// ---------------------------------------------------------------------------
+// Records (dicts)
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, uniffi::Record)]
+pub struct ColumnInfo {
+    pub name: String,
+    pub data_type: String,
+    pub nullable: bool,
+    pub is_primary_key: bool,
+}
+
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct QueryResult {
+    pub columns: Vec<ColumnInfo>,
+    pub rows: Vec<Vec<CellValue>>,
+    pub rows_affected: u64,
+    pub execution_time_ms: u64,
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, uniffi::Record)]
+pub struct TableInfo {
+    pub name: String,
+    pub schema: String,
+    pub columns: Vec<ColumnInfo>,
+    pub row_count: Option<u64>,
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, uniffi::Record)]
+pub struct DatabaseConfig {
+    pub db_type: DatabaseType,
+    pub url: String,
+    pub host: Option<String>,
+    pub port: Option<u32>,
+    pub database: Option<String>,
+    pub username: Option<String>,
+    pub password: Option<String>,
+    pub max_connections: u32,
+}
+
+impl DatabaseConfig {
+    pub fn new(db_type: DatabaseType, url: impl Into<String>) -> Self {
+        Self {
+            db_type,
+            url: url.into(),
+            host: None,
+            port: None,
+            database: None,
+            username: None,
+            password: None,
+            max_connections: 10,
+        }
+    }
+
+    pub fn build_url(&self) -> String {
+        let host = self.host.as_deref().unwrap_or("localhost");
+        let db = self.database.as_deref().unwrap_or("mydb");
+        let user_pass = match (&self.username, &self.password) {
+            (Some(u), Some(p)) => format!("{u}:{p}@"),
+            (Some(u), None) => format!("{u}@"),
+            _ => String::new(),
+        };
+        match self.db_type {
+            DatabaseType::Sqlite => self.url.clone(),
+            DatabaseType::Postgres => {
+                let port = self.port.unwrap_or(5432);
+                format!("postgres://{user_pass}{host}:{port}/{db}")
+            }
+            DatabaseType::MySql | DatabaseType::MariaDB => {
+                let port = self.port.unwrap_or(3306);
+                format!("mysql://{user_pass}{host}:{port}/{db}")
+            }
+            DatabaseType::SqlServer => {
+                let port = self.port.unwrap_or(1433);
+                format!("sqlserver://{user_pass}{host}:{port}/{db}")
+            }
+            DatabaseType::Db2 => {
+                let port = self.port.unwrap_or(50000);
+                format!("db2://{user_pass}{host}:{port}/{db}")
+            }
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Error
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, thiserror::Error, uniffi::Error)]
+pub enum DbError {
+    #[error("Connection failed: {message}")]
+    ConnectionError { message: String },
+    #[error("Query failed: {message}")]
+    QueryError { message: String },
+    #[error("Not connected")]
+    NotConnected,
+}

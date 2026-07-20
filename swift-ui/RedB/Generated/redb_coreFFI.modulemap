@@ -1,0 +1,4 @@
+module redb_coreFFI {
+    header "redb_coreFFI.h"
+    export *
+}

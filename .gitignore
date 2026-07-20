@@ -1,0 +1,29 @@
+# Xcode
+*.xcworkspace
+*.xcuserdata
+DerivedData/
+build/
+*.build/
+
+# Swift Package Manager
+.build/
+Packages/
+*.swp
+
+# macOS
+.DS_Store
+
+# Rust
+target/
+gen-bindings/
+
+# IDE
+.idea/
+*.swp
+*.swo
+*~
+.vscode/
+
+# Env
+.env
+*.local

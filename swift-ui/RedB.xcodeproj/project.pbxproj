@@ -1,0 +1,426 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		14E7B6FF05DAAA2972663FE7 /* QueryResultModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33C585DBC93086FA6FE3DE9F /* QueryResultModel.swift */; };
+		1AB7F6541433913D066680BA /* RedBApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 750F3A6A2F82F5C899D2BED5 /* RedBApp.swift */; };
+		1D357ABC9045B7634F42656A /* CodeEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6A939597A7BF78923E0C323 /* CodeEditor.swift */; };
+		21777C3ABDABC267DDC3A92D /* TableStructureView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8E0BD40496A3F0285ECC63A /* TableStructureView.swift */; };
+		42E91C1C6AF3A7BFF1289082 /* QueryResultView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA399098D9516F2E08B44A99 /* QueryResultView.swift */; };
+		4AFFD2B0548F42FCE32EA63A /* Untitled.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D91273D3215A5DBB0CBCB53 /* Untitled.swift */; };
+		4BE3280680DF2E6864D811EE /* SavedQuery.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B651217C3D2CEC4E5DEC60F /* SavedQuery.swift */; };
+		5CCDB620265197D98919F2C9 /* QueryTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADEA3E74D6A8EB4125113AA5 /* QueryTab.swift */; };
+		76D78E54234A2EA033B94C23 /* TableBrowserView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D98F0AAB2D9614321B17F5BD /* TableBrowserView.swift */; };
+		B46DBF62646C69924DAF7F4B /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 07459A73144D87C033B5BE5C /* Assets.xcassets */; };
+		B66CF440813A1DB4EDB3FEDF /* SQLQueryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F32586087AFC9E147589B79 /* SQLQueryView.swift */; };
+		C56E6E5C23FD738CDFCFC4F9 /* SidebarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9BBEFF86D85D5DE768E035F7 /* SidebarView.swift */; };
+		E0EEDAE20E7B4BA8D0183A92 /* RustBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7B5D3D5A8AC38A3E5EFE4FB /* RustBridge.swift */; };
+		F0B872469C74BA1B52CA6E85 /* DatabaseViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C0C22AC2D4E1AD420D6B91E /* DatabaseViewModel.swift */; };
+		F1DAA36E95426B0519AC6B90 /* redb_core.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2FE072BF989B369C6B2F738A /* redb_core.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		07459A73144D87C033B5BE5C /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		0FCA064AA20632373921A112 /* redb_coreFFI.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = redb_coreFFI.h; sourceTree = "<group>"; };
+		1B651217C3D2CEC4E5DEC60F /* SavedQuery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavedQuery.swift; sourceTree = "<group>"; };
+		1FB336074B05ABA3FE349CCF /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		2FE072BF989B369C6B2F738A /* redb_core.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = redb_core.swift; sourceTree = "<group>"; };
+		33C585DBC93086FA6FE3DE9F /* QueryResultModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QueryResultModel.swift; sourceTree = "<group>"; };
+		3F32586087AFC9E147589B79 /* SQLQueryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SQLQueryView.swift; sourceTree = "<group>"; };
+		750F3A6A2F82F5C899D2BED5 /* RedBApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RedBApp.swift; sourceTree = "<group>"; };
+		81D4F94997B284FF9B88C737 /* RedB-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "RedB-Bridging-Header.h"; sourceTree = "<group>"; };
+		9BBEFF86D85D5DE768E035F7 /* SidebarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarView.swift; sourceTree = "<group>"; };
+		9C0C22AC2D4E1AD420D6B91E /* DatabaseViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DatabaseViewModel.swift; sourceTree = "<group>"; };
+		9D91273D3215A5DBB0CBCB53 /* Untitled.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Untitled.swift; sourceTree = "<group>"; };
+		A7B5D3D5A8AC38A3E5EFE4FB /* RustBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RustBridge.swift; sourceTree = "<group>"; };
+		ADEA3E74D6A8EB4125113AA5 /* QueryTab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QueryTab.swift; sourceTree = "<group>"; };
+		BA399098D9516F2E08B44A99 /* QueryResultView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QueryResultView.swift; sourceTree = "<group>"; };
+		C5671F93BC2DA9690CDFF297 /* RedB.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = RedB.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		C79C0158E67C408D575A2442 /* redb_coreFFI.modulemap */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.module-map"; path = redb_coreFFI.modulemap; sourceTree = "<group>"; };
+		D98F0AAB2D9614321B17F5BD /* TableBrowserView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TableBrowserView.swift; sourceTree = "<group>"; };
+		E6A939597A7BF78923E0C323 /* CodeEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CodeEditor.swift; sourceTree = "<group>"; };
+		F8E0BD40496A3F0285ECC63A /* TableStructureView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TableStructureView.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		1C1E65402611B2494314E711 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				E6A939597A7BF78923E0C323 /* CodeEditor.swift */,
+				BA399098D9516F2E08B44A99 /* QueryResultView.swift */,
+				9BBEFF86D85D5DE768E035F7 /* SidebarView.swift */,
+				3F32586087AFC9E147589B79 /* SQLQueryView.swift */,
+				D98F0AAB2D9614321B17F5BD /* TableBrowserView.swift */,
+				F8E0BD40496A3F0285ECC63A /* TableStructureView.swift */,
+				9D91273D3215A5DBB0CBCB53 /* Untitled.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		1D510CB4A6A6E24EB1A3625A = {
+			isa = PBXGroup;
+			children = (
+				E6C9940A17455EBD0EBC2126 /* RedB */,
+				8BEEBD29DE4AB64504F616F6 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		2D151C04B25E580EB18A03BD /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				9C0C22AC2D4E1AD420D6B91E /* DatabaseViewModel.swift */,
+				33C585DBC93086FA6FE3DE9F /* QueryResultModel.swift */,
+				ADEA3E74D6A8EB4125113AA5 /* QueryTab.swift */,
+				1B651217C3D2CEC4E5DEC60F /* SavedQuery.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		3597CD07D2A7B2A6B3ABBD25 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				A7B5D3D5A8AC38A3E5EFE4FB /* RustBridge.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		6DA752EC9D124D2F7CD93D8C /* Generated */ = {
+			isa = PBXGroup;
+			children = (
+				2FE072BF989B369C6B2F738A /* redb_core.swift */,
+				0FCA064AA20632373921A112 /* redb_coreFFI.h */,
+				C79C0158E67C408D575A2442 /* redb_coreFFI.modulemap */,
+			);
+			path = Generated;
+			sourceTree = "<group>";
+		};
+		8BEEBD29DE4AB64504F616F6 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				C5671F93BC2DA9690CDFF297 /* RedB.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		E6C9940A17455EBD0EBC2126 /* RedB */ = {
+			isa = PBXGroup;
+			children = (
+				07459A73144D87C033B5BE5C /* Assets.xcassets */,
+				1FB336074B05ABA3FE349CCF /* Info.plist */,
+				81D4F94997B284FF9B88C737 /* RedB-Bridging-Header.h */,
+				750F3A6A2F82F5C899D2BED5 /* RedBApp.swift */,
+				6DA752EC9D124D2F7CD93D8C /* Generated */,
+				2D151C04B25E580EB18A03BD /* Models */,
+				3597CD07D2A7B2A6B3ABBD25 /* Services */,
+				1C1E65402611B2494314E711 /* Views */,
+			);
+			path = RedB;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		11FBADDBA2A4C95CFF313772 /* RedB */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 5722C9EB4BA95BFCD28AE0A0 /* Build configuration list for PBXNativeTarget "RedB" */;
+			buildPhases = (
+				1AAA663751C17D2C70BC6C1B /* Build Rust Core */,
+				01897D3CD5D75BF8A794A071 /* Sources */,
+				3A4892E783B078171FC4B30A /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = RedB;
+			packageProductDependencies = (
+			);
+			productName = RedB;
+			productReference = C5671F93BC2DA9690CDFF297 /* RedB.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		9E4A11368E867B8A6ED3F972 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1500;
+				TargetAttributes = {
+				};
+			};
+			buildConfigurationList = FEDC86133B7178B12E47F61C /* Build configuration list for PBXProject "RedB" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 1D510CB4A6A6E24EB1A3625A;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 8BEEBD29DE4AB64504F616F6 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				11FBADDBA2A4C95CFF313772 /* RedB */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		3A4892E783B078171FC4B30A /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B46DBF62646C69924DAF7F4B /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		1AAA663751C17D2C70BC6C1B /* Build Rust Core */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Build Rust Core";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "echo \"==> Rust lib prebuilt. Make sure to run scripts/build-rust.sh <==\"\n";
+		};
+/* End PBXShellScriptBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		01897D3CD5D75BF8A794A071 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				1D357ABC9045B7634F42656A /* CodeEditor.swift in Sources */,
+				F0B872469C74BA1B52CA6E85 /* DatabaseViewModel.swift in Sources */,
+				14E7B6FF05DAAA2972663FE7 /* QueryResultModel.swift in Sources */,
+				42E91C1C6AF3A7BFF1289082 /* QueryResultView.swift in Sources */,
+				5CCDB620265197D98919F2C9 /* QueryTab.swift in Sources */,
+				1AB7F6541433913D066680BA /* RedBApp.swift in Sources */,
+				E0EEDAE20E7B4BA8D0183A92 /* RustBridge.swift in Sources */,
+				B66CF440813A1DB4EDB3FEDF /* SQLQueryView.swift in Sources */,
+				4BE3280680DF2E6864D811EE /* SavedQuery.swift in Sources */,
+				C56E6E5C23FD738CDFCFC4F9 /* SidebarView.swift in Sources */,
+				76D78E54234A2EA033B94C23 /* TableBrowserView.swift in Sources */,
+				21777C3ABDABC267DDC3A92D /* TableStructureView.swift in Sources */,
+				4AFFD2B0548F42FCE32EA63A /* Untitled.swift in Sources */,
+				F1DAA36E95426B0519AC6B90 /* redb_core.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		5296CD5BCE7FAB2FD40AF225 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.9;
+			};
+			name = Release;
+		};
+		934D505A20D193B4209627F7 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				COMBINE_HIDPI_IMAGES = YES;
+				INFOPLIST_FILE = RedB/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				LIBRARY_SEARCH_PATHS = (
+					"$(SRCROOT)/../target/release",
+				);
+				OTHER_LDFLAGS = "-all_load -force_load $(SRCROOT)/../target/release/libredb_core.a -lresolv -lz -framework Security -framework SystemConfiguration";
+				OTHER_LIBTOOLFLAGS = "-all_load -force_load $(SRCROOT)/../target/release/libredb_core.a -lresolv -lz -framework Security -framework SystemConfiguration";
+				PRODUCT_BUNDLE_IDENTIFIER = com.redb.app;
+				SDKROOT = macosx;
+				SWIFT_OBJC_BRIDGING_HEADER = "$(SRCROOT)/RedB/RedB-Bridging-Header.h";
+				USER_HEADER_SEARCH_PATHS = (
+					"$(SRCROOT)/RedB/Generated",
+				);
+			};
+			name = Debug;
+		};
+		AD63082E51E79649756BDA22 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				COMBINE_HIDPI_IMAGES = YES;
+				INFOPLIST_FILE = RedB/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				LIBRARY_SEARCH_PATHS = (
+					"$(SRCROOT)/../target/release",
+				);
+				OTHER_LDFLAGS = "-all_load -force_load $(SRCROOT)/../target/release/libredb_core.a -lresolv -lz -framework Security -framework SystemConfiguration";
+				OTHER_LIBTOOLFLAGS = "-all_load -force_load $(SRCROOT)/../target/release/libredb_core.a -lresolv -lz -framework Security -framework SystemConfiguration";
+				PRODUCT_BUNDLE_IDENTIFIER = com.redb.app;
+				SDKROOT = macosx;
+				SWIFT_OBJC_BRIDGING_HEADER = "$(SRCROOT)/RedB/RedB-Bridging-Header.h";
+				USER_HEADER_SEARCH_PATHS = (
+					"$(SRCROOT)/RedB/Generated",
+				);
+			};
+			name = Release;
+		};
+		FBE199CC76DB31B8DF897FB5 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.9;
+			};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		5722C9EB4BA95BFCD28AE0A0 /* Build configuration list for PBXNativeTarget "RedB" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				934D505A20D193B4209627F7 /* Debug */,
+				AD63082E51E79649756BDA22 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		FEDC86133B7178B12E47F61C /* Build configuration list for PBXProject "RedB" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				FBE199CC76DB31B8DF897FB5 /* Debug */,
+				5296CD5BCE7FAB2FD40AF225 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 9E4A11368E867B8A6ED3F972 /* Project object */;
+}
