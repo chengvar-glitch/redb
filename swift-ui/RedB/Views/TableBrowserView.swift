@@ -240,6 +240,9 @@ private struct TableRow: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.vertical, 4)
         .contentShape(Rectangle())
+        .onTapGesture(count: 2) {
+            Task { await vm.quickView(table: table) }
+        }
         .contextMenu {
             Button {
                 Task { await vm.quickView(table: table) }

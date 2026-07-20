@@ -217,40 +217,43 @@ private struct QueryTabContentView: View {
     // MARK: - Editor
 
     private var editorPane: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Label("SQL Editor", systemImage: "pencil.and.outline")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-
-                Spacer()
-
-                saveButton
-                formatButton
-                runAllButton
-                runButton
-            }
-
             CodeEditor(text: $tab.sqlInput, tableSuggestions: { prefix in
-                vm.tableSuggestions(matching: prefix)
-            })
-                .frame(minHeight: 80)
-                .clipShape(RoundedRectangle(cornerRadius: 8))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 8)
-                        .stroke(Color.gray.opacity(0.2), lineWidth: 1)
-                )
-                .overlay(alignment: .topLeading) {
-                    if tab.sqlInput.isEmpty {
-                        Text("Enter SQL…")
-                            .font(.body.monospaced())
-                            .foregroundStyle(.tertiary)
-                            .padding(10)
-                            .allowsHitTesting(false)
+                let tables = vm.tableSuggestions(matching: prefix)
+                var result = tables
+                for t in tables {
+                    let alias = vm.aliasForTable(t)
+                    if alias != t {
+                        result.append("\(t) \(alias)")
                     }
                 }
-        }
-        .padding(12)
+                return result
+            }, columnSuggestions: { prefix in
+                vm.columnSuggestions(matching: prefix)
+            })
+            .frame(minHeight: 80)
+            .clipShape(RoundedRectangle(cornerRadius: 8))
+            .overlay(
+                RoundedRectangle(cornerRadius: 8)
+                    .stroke(Color.gray.opacity(0.2), lineWidth: 1)
+            )
+            .overlay(alignment: .topLeading) {
+                if tab.sqlInput.isEmpty {
+                    Text("Enter SQL…")
+                        .font(.body.monospaced())
+                        .foregroundStyle(.tertiary)
+                        .padding(10)
+                        .allowsHitTesting(false)
+                }
+            }
+            .overlay(alignment: .bottomTrailing) {
+                HStack(spacing: 4) {
+                    saveButton
+                    formatButton
+                    runAllButton
+                    runButton
+                }
+                .padding(6)
+            }
     }
 
     private var runButton: some View {

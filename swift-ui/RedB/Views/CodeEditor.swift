@@ -86,6 +86,7 @@ struct CodeEditor: NSViewRepresentable {
     @Binding var text: String
     var font: NSFont = .monospacedSystemFont(ofSize: 12, weight: .regular)
     var tableSuggestions: ((String) -> [String])?
+    var columnSuggestions: ((String) -> [String])?
 
     func makeNSView(context: Context) -> NSScrollView {
         let scroll = NSScrollView()
@@ -170,7 +171,31 @@ struct CodeEditor: NSViewRepresentable {
         }
 
         /// Check if cursor follows a keyword that expects table names.
-        private func isTableNameContext(in text: String, cursor: Int) -> Bool {
+        private func isColumnContext(in text: String, cursor: Int) -> Bool {
+        let ns = text as NSString
+        let prefix = ns.substring(to: min(cursor, ns.length))
+        let words = prefix.split { $0.isWhitespace || $0 == "\n" || $0 == "," || $0 == "(" }
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }
+        guard words.count >= 2 else { return false }
+        let contextKeywords: Set<String> = [
+            "WHERE", "AND", "OR", "ORDER BY", "GROUP BY", "HAVING",
+            "ON", "SET", "SELECT", "BETWEEN", "IN", "NOT IN",
+            "IS NULL", "IS NOT NULL", "LIKE",
+        ]
+        let prev = words[words.count - 2].uppercased()
+        for kw in contextKeywords {
+            if prev.hasSuffix(kw) || prev == kw { return true }
+        }
+        // Also suggest columns after a comma in SELECT clause
+        if prev == "," && words.count >= 3 {
+            let prev2 = words[words.count - 3].uppercased()
+            if prev2 == "SELECT" || prev2 == "," { return true }
+        }
+        return false
+    }
+
+    private func isTableNameContext(in text: String, cursor: Int) -> Bool {
             let keywords = Set(["FROM", "JOIN", "INTO", "UPDATE", "TABLE", "ON"])
             let ns = text as NSString
             guard cursor > 0 else { return false }
@@ -202,6 +227,13 @@ struct CodeEditor: NSViewRepresentable {
                            "WITH", "RECURSIVE", "RETURNING", "FOR UPDATE", "FOR SHARE"]
             for c in clauses where c.lowercased().hasPrefix(partial) {
                 result.append(c)
+            }
+
+            // Column names (after WHERE, ORDER BY, GROUP BY, etc.)
+            if isColumnContext(in: textView.string, cursor: charRange.location),
+               let suggester = parent.columnSuggestions {
+                let cols = suggester(String(partial))
+                result.append(contentsOf: cols)
             }
 
             // Table names (contextual)

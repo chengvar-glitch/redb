@@ -174,6 +174,33 @@ final class DatabaseViewModel: ObservableObject {
         return tables.map(\.name)
     }
 
+    func columnSuggestions(matching prefix: String) -> [String] {
+        guard case .success(let tables) = tablesLoadState else { return [] }
+        let sql = activeQueryTab?.sqlInput ?? ""
+        let tableNames = extractTableNames(from: sql)
+        guard let firstName = tableNames.first,
+              let table = tables.first(where: { $0.name == firstName })
+        else { return [] }
+        return table.columns
+            .map { $0.name }
+            .filter { prefix.isEmpty || $0.lowercased().hasPrefix(prefix.lowercased()) }
+            .sorted()
+    }
+
+    func aliasForTable(_ name: String) -> String {
+        // camelCase: UserLoginLog → ull
+        let upper = name.filter { $0.isUppercase }
+        if !upper.isEmpty && name.count > 3 && upper.count > 1 {
+            return upper.lowercased()
+        }
+        // snake_case: sys_user → su
+        if name.contains("_") {
+            return name.split(separator: "_").compactMap { $0.first }.map { String($0).lowercased() }.joined()
+        }
+        // Default: first 2 chars
+        return String(name.prefix(2).lowercased())
+    }
+
     func tableSuggestions(matching prefix: String) -> [String] {
         let lower = prefix.lowercased()
         let all = availableTableNames
@@ -223,11 +250,6 @@ final class DatabaseViewModel: ObservableObject {
         loadSavedConnections()
         loadSavedQueries()
         loadTableUsage()
-
-        let savedSql = UserDefaults.standard.string(forKey: lastQueryKey) ?? ""
-        let tab = QueryTab(title: "Query 1", sqlInput: savedSql)
-        queryTabs.append(tab)
-        activeQueryTabId = tab.id
 
         bridge.$connectionStatus
             .receive(on: DispatchQueue.main)
