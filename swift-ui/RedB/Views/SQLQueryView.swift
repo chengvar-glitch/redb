@@ -56,11 +56,43 @@ struct SQLQueryView: View {
                 }
 
                 addTabButton
+
+                if vm.queryTabs.count > 5 {
+                    tabBucketMenu
+                }
             }
             .padding(.horizontal, 8)
             .padding(.vertical, 4)
         }
         .background(Color(nsColor: .windowBackgroundColor))
+    }
+
+    private var tabBucketMenu: some View {
+        Menu {
+            ForEach(vm.queryTabs) { tab in
+                Button {
+                    vm.activeQueryTabId = tab.id
+                } label: {
+                    HStack(spacing: 6) {
+                        if tab.id == vm.activeQueryTabId {
+                            Image(systemName: "checkmark")
+                        }
+                        Text(tab.title)
+                            .lineLimit(1)
+                    }
+                }
+            }
+        } label: {
+            Image(systemName: "chevron.down")
+                .font(.caption2)
+                .foregroundColor(.secondary)
+                .padding(.horizontal, 6)
+                .padding(.vertical, 5)
+        }
+        .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)
+        .fixedSize()
+        .help("All Tabs")
     }
 
     private func tabPill(_ tab: QueryTab) -> some View {
@@ -186,6 +218,13 @@ private struct QueryTabContentView: View {
             .keyboardShortcut("s", modifiers: [.command])
             .hidden()
         )
+        .background(
+            Button("") {
+                vm.newQueryTab()
+            }
+            .keyboardShortcut("w", modifiers: [.command])
+            .hidden()
+        )
         .alert("Save Query", isPresented: $showSaveDialog) {
             TextField("Query name", text: $saveName)
             Button("Cancel", role: .cancel) { }
@@ -216,20 +255,32 @@ private struct QueryTabContentView: View {
 
     // MARK: - Editor
 
+    @State private var suggestions: [String] = []
+    @State private var suggestPrefix = ""
+    @State private var selectedIndex = 0
+
     private var editorPane: some View {
-            CodeEditor(text: $tab.sqlInput, tableSuggestions: { prefix in
-                let tables = vm.tableSuggestions(matching: prefix)
-                var result = tables
-                for t in tables {
-                    let alias = vm.aliasForTable(t)
-                    if alias != t {
-                        result.append("\(t) \(alias)")
-                    }
-                }
-                return result
-            }, columnSuggestions: { prefix in
-                vm.columnSuggestions(matching: prefix)
-            })
+        CodeEditor(text: $tab.sqlInput, onSuggest: { prefix in
+            suggestPrefix = prefix
+            suggestions = computeSuggestions(prefix)
+            selectedIndex = 0
+            return suggestions
+        }, onTab: {
+            if !suggestions.isEmpty { acceptFirstSuggestion() }
+        }, onArrowUp: {
+            guard !suggestions.isEmpty else { return }
+            selectedIndex = (selectedIndex - 1 + suggestions.count) % suggestions.count
+        }, onArrowDown: {
+            guard !suggestions.isEmpty else { return }
+            selectedIndex = (selectedIndex + 1) % min(suggestions.count, 12)
+        }, onEnter: {
+            if !suggestions.isEmpty && selectedIndex < suggestions.count {
+                acceptSuggestion(suggestions[selectedIndex])
+            }
+        }, onEscape: {
+            suggestions = []
+            suggestPrefix = ""
+        })
             .frame(minHeight: 80)
             .clipShape(RoundedRectangle(cornerRadius: 8))
             .overlay(
@@ -241,7 +292,7 @@ private struct QueryTabContentView: View {
                     Text("Enter SQL…")
                         .font(.body.monospaced())
                         .foregroundStyle(.tertiary)
-                        .padding(10)
+                        .padding(EdgeInsets(top: 6, leading: 6, bottom: 0, trailing: 0))
                         .allowsHitTesting(false)
                 }
             }
@@ -254,6 +305,89 @@ private struct QueryTabContentView: View {
                 }
                 .padding(6)
             }
+            .overlay(alignment: .topLeading) {
+                suggestionPopup
+            }
+    }
+
+    @ViewBuilder
+    private var suggestionPopup: some View {
+        if !suggestions.isEmpty && !suggestPrefix.isEmpty {
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 0) {
+                    ForEach(Array(suggestions.prefix(12).enumerated()), id: \.offset) { i, item in
+                        Button {
+                            acceptSuggestion(item)
+                        } label: {
+                            Text(item)
+                                .font(.body.monospaced())
+                                .foregroundColor(.primary)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                        .buttonStyle(.plain)
+                        .contentShape(Rectangle())
+                        .background(
+                            i == selectedIndex ? Color.accentColor.opacity(0.12) : Color.clear
+                        )
+                        .onHover { isHovered in
+                            if isHovered { NSCursor.pointingHand.push() }
+                            else { NSCursor.pop() }
+                        }
+
+                        if i < min(suggestions.count, 12) - 1 {
+                            Divider().padding(.leading, 8)
+                        }
+                    }
+                }
+            }
+            .frame(maxHeight: 280)
+            .frame(width: 260)
+            .background(
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(Color(nsColor: .windowBackgroundColor))
+                    .shadow(color: .black.opacity(0.15), radius: 8, x: 0, y: 4)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 8)
+                    .stroke(Color.gray.opacity(0.25), lineWidth: 1)
+            )
+            .padding(EdgeInsets(top: 30, leading: 4, bottom: 0, trailing: 0))
+            .transition(.opacity.combined(with: .scale(scale: 0.95)))
+            .animation(.easeOut(duration: 0.12), value: suggestions.isEmpty)
+        }
+    }
+
+    private func computeSuggestions(_ prefix: String) -> [String] {
+        guard prefix.count >= 1 else { return [] }
+        let lower = prefix.lowercased()
+        let allFunctions = allSQLFunctions
+        let funcs = allFunctions.filter { $0.lowercased().hasPrefix(lower) }.map { "\($0)()" }
+
+        var tables = vm.tableSuggestions(matching: prefix)
+        for t in tables {
+            let alias = vm.aliasForTable(t)
+            if alias != t {
+                tables.append("\(t) \(alias)")
+            }
+        }
+
+        return Array((funcs + tables).prefix(20))
+    }
+
+    private func acceptSuggestion(_ item: String) {
+        guard let i = tab.sqlInput.range(of: suggestPrefix, options: [.backwards, .caseInsensitive]) else { return }
+        let before = tab.sqlInput[tab.sqlInput.startIndex..<i.lowerBound]
+        let after = tab.sqlInput[i.upperBound...]
+        tab.sqlInput = String(before) + item + String(after)
+        suggestions = []
+        suggestPrefix = ""
+    }
+
+    private func acceptFirstSuggestion() {
+        guard let first = suggestions.first else { return }
+        acceptSuggestion(first)
     }
 
     private var runButton: some View {

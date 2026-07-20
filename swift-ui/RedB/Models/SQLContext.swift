@@ -211,10 +211,12 @@ private func extractCurrentWord(_ text: String) -> String? {
 private func hasLastWord(_ text: String, _ keyword: String) -> Bool {
     let upper = text.uppercased()
     let kw = keyword.uppercased()
-    guard let range = upper.range(of: kw) else { return false }
+    // Find the LAST occurrence of the keyword
+    guard let range = upper.range(of: kw, options: .backwards) else { return false }
     let after = upper[range.upperBound...].trimmingCharacters(in: .whitespaces)
-    // The keyword should be followed by nothing or only whitespace/newline
-    return after.isEmpty || after.hasPrefix("\n")
+    // After the keyword there should be only whitespace (user is typing the next word)
+    // OR the cursor is right after the keyword (nothing after)
+    return after.isEmpty || !after.contains(" ")
 }
 
 // MARK: - Suggestions Generator

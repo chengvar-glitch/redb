@@ -224,8 +224,14 @@ final class DatabaseViewModel: ObservableObject {
     // -- Quick View 加载状态 --
     @Published var quickViewLoading = false
 
+    // -- Tab 限制 --
+    static let maxTabs = 15
+    @Published var showMaxTabsAlert = false
+
     // -- Row Limit --
     @Published var rowLimit: Int = 200
+    @Published var databases: [String] = []
+    @Published var currentDatabase: String = ""
 
     // -- Connection state --
     @Published var isConnecting: Bool = false
@@ -315,6 +321,8 @@ final class DatabaseViewModel: ObservableObject {
             if !loadCachedTables(for: profile) {
                 await refreshTables()
             }
+            // Pre-fetch database list for Switch Database
+            await refreshDatabases(for: profile)
         } catch {
             connectionError = error.localizedDescription
         }
@@ -389,7 +397,11 @@ final class DatabaseViewModel: ObservableObject {
     // MARK: - Query
 
     @discardableResult
-    func newQueryTab(sql: String = "") -> QueryTab {
+    func newQueryTab(sql: String = "") -> QueryTab? {
+        guard queryTabs.count < Self.maxTabs else {
+            showMaxTabsAlert = true
+            return nil
+        }
         let n = queryTabs.count + 1
         let tab = QueryTab(title: "Query \(n)", sqlInput: sql)
         queryTabs.append(tab)
@@ -536,9 +548,47 @@ final class DatabaseViewModel: ObservableObject {
         } catch {
             result = QueryResult(columns: [], rows: [], rowsAffected: 0, executionTimeMs: 0)
         }
-        let tab = newQueryTab(sql: sql)
+        guard let tab = newQueryTab(sql: sql) else { return }
         tab.queryLoadState = .success([result])
         tab.title = table.name
+    }
+
+    func refreshDatabases(for profile: ConnectionProfile) async {
+        // Get current database
+        let curSql: String
+        switch profile.dbType {
+        case .postgres: curSql = "SELECT current_database()"
+        case .mysql, .mariaDb: curSql = "SELECT DATABASE()"
+        case .sqlServer: curSql = "SELECT DB_NAME()"
+        default: curSql = ""
+        }
+        if !curSql.isEmpty, let r = try? await bridge.executeQuery(curSql) {
+            if case .text(let name) = r.rows.first?.first { currentDatabase = name }
+            if case .text(let name) = r.rows.first?.last { currentDatabase = name }
+        }
+
+        // Get database list
+        let sql: String
+        switch profile.dbType {
+        case .postgres:
+            sql = "SELECT datname FROM pg_database WHERE datistemplate = false ORDER BY datname"
+        case .mysql, .mariaDb:
+            sql = "SHOW DATABASES"
+        case .sqlServer:
+            sql = "SELECT name FROM sys.databases ORDER BY name"
+        default:
+            databases = []
+            return
+        }
+        guard let result = try? await bridge.executeQuery(sql) else {
+            databases = []
+            return
+        }
+        databases = result.rows.compactMap { row in
+            if case .text(let name) = row.first { return name }
+            if case .text(let name) = row.last { return name }
+            return nil
+        }
     }
 
     func isConnected(_ profile: ConnectionProfile) -> Bool {

@@ -57,6 +57,15 @@ struct ContentView: View {
         }
         .frame(minWidth: 800, minHeight: 600)
         .toolbar { connectionToolbar }
+        .background(
+            Button("") {
+                if let tab = vm.activeQueryTab {
+                    vm.closeQueryTab(tab)
+                }
+            }
+            .keyboardShortcut("w", modifiers: [.command])
+            .hidden()
+        )
         .alert("Connection Failed", isPresented: $showErrorAlert) {
             Button("OK") { vm.connectionError = nil }
         } message: {
@@ -76,6 +85,11 @@ struct ContentView: View {
                   !vm.isConnecting
             else { return }
             Task { await vm.connect(p) }
+        }
+        .alert("Tab Limit Reached", isPresented: $vm.showMaxTabsAlert) {
+            Button("OK") {}
+        } message: {
+            Text("You can have at most \(DatabaseViewModel.maxTabs) query tabs open at once. Close some tabs before opening new ones.")
         }
     }
 

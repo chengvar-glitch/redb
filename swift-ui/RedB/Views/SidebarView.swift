@@ -74,19 +74,36 @@ private struct ConnectionRow: View {
             statusDot
 
             VStack(alignment: .leading, spacing: 2) {
-                HStack(spacing: 4) {
+                HStack(spacing: 6) {
                     dbIcon(for: profile.dbType)
                         .font(.caption)
-                        .foregroundStyle(.secondary)
                     Text(profile.name)
                         .fontWeight(.semibold)
                         .lineLimit(1)
+                    Text(profile.dbType.rawValue)
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                        .padding(.horizontal, 5)
+                        .padding(.vertical, 1)
+                        .background(Color.gray.opacity(0.12))
+                        .cornerRadius(3)
+                    Spacer(minLength: 0)
                 }
-                Text(profile.url)
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
+                if vm.isConnected(profile) && !vm.currentDatabase.isEmpty {
+                    HStack(spacing: 4) {
+                        Image(systemName: "cube.fill")
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
+                        Text(vm.currentDatabase)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                } else {
+                    Text("\(profile.host.isEmpty ? "local" : profile.host):\(profile.port)")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                        .lineLimit(1)
+                }
             }
 
             Spacer(minLength: 4)
@@ -129,6 +146,41 @@ private struct ConnectionRow: View {
             }
 
             Button("Edit Connection") { showEditSheet = true }
+
+            if profile.dbType != .sqlite && profile.dbType != .db2 {
+                Menu("Switch Database") {
+                    if vm.databases.isEmpty {
+                        Text("No databases available")
+                    } else {
+                        Text("Current: \(vm.currentDatabase)")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        Divider()
+                        ForEach(vm.databases, id: \.self) { db in
+                            Button {
+                                let useSql: String
+                                switch profile.dbType {
+                                case .mysql, .mariaDb, .sqlServer:
+                                    useSql = "USE \(db);"
+                                case .postgres:
+                                    useSql = "-- Switch to: \(db)"
+                                default: return
+                                }
+                                vm.activeQueryTab?.sqlInput = useSql
+                                Task { await vm.executeQuery() }
+                            } label: {
+                                HStack {
+                                    Text(db)
+                                    if db == vm.currentDatabase {
+                                        Image(systemName: "checkmark")
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
             Divider()
             if vm.bridge.connectionStatus == .connected && vm.selectedConnection?.id == profile.id {
                 Button("Disconnect") { Task { await vm.disconnect() } }

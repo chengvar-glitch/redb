@@ -4,6 +4,7 @@ struct TableBrowserView: View {
     @EnvironmentObject var vm: DatabaseViewModel
     @State private var searchText = ""
     @State private var savedQueriesExpanded = false
+    @State private var tablesExpanded = true
 
     var body: some View {
         Group {
@@ -56,21 +57,54 @@ struct TableBrowserView: View {
         }
 
         return List {
-            if !vm.savedQueries.isEmpty {
-                savedQueriesSection
-            }
-
-            if !searchText.isEmpty && filtered.isEmpty {
-                Text("No tables matching \"\(searchText)\"")
-                    .foregroundColor(.secondary)
-            }
-
-            ForEach(filtered, id: \.name) { table in
-                TableRow(table: table)
-            }
+            savedQueriesSection
+            tablesSection(tables: tables, filtered: filtered)
         }
         .listStyle(.plain)
         .searchable(text: $searchText, prompt: "Filter tables")
+    }
+
+    // MARK: - Tables Section
+
+    private func tablesSection(tables all: [TableInfo], filtered: [TableInfo]) -> some View {
+        Section {
+            if tablesExpanded {
+                if all.isEmpty {
+                    Text("No tables")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                        .padding(.vertical, 4)
+                        .padding(.leading, 4)
+                } else if filtered.isEmpty && !searchText.isEmpty {
+                    Text("No tables matching \"\(searchText)\"")
+                        .foregroundColor(.secondary)
+                } else {
+                    ForEach(filtered, id: \.name) { table in
+                        TableRow(table: table)
+                    }
+                }
+            }
+        } header: {
+            Button {
+                withAnimation { tablesExpanded.toggle() }
+            } label: {
+                HStack(spacing: 4) {
+                    Image(systemName: tablesExpanded ? "folder.fill" : "folder")
+                        .font(.caption)
+                        .foregroundColor(.accentColor)
+                    Text("Tables")
+                        .font(.caption)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.secondary)
+                    Spacer()
+                    Text("\(all.count)")
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+        }
     }
 
     // MARK: - Saved Queries Section
@@ -78,8 +112,16 @@ struct TableBrowserView: View {
     private var savedQueriesSection: some View {
         Section {
             if savedQueriesExpanded {
-                ForEach(vm.savedQueries) { query in
-                    SavedQueryRow(query: query)
+                if vm.savedQueries.isEmpty {
+                    Text("No saved queries")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                        .padding(.vertical, 4)
+                        .padding(.leading, 4)
+                } else {
+                    ForEach(vm.savedQueries) { query in
+                        SavedQueryRow(query: query)
+                    }
                 }
             }
         } header: {
@@ -90,7 +132,7 @@ struct TableBrowserView: View {
                     Image(systemName: savedQueriesExpanded ? "folder.fill" : "folder")
                         .font(.caption)
                         .foregroundColor(.accentColor)
-                    Text("查询")
+                    Text("Query")
                         .font(.caption)
                         .fontWeight(.semibold)
                         .foregroundColor(.secondary)

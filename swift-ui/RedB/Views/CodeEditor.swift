@@ -6,8 +6,12 @@ import AppKit
 struct CodeEditor: NSViewRepresentable {
     @Binding var text: String
     var font: NSFont = .monospacedSystemFont(ofSize: 12, weight: .regular)
-    var tableSuggestions: ((String) -> [String])?
-    var columnSuggestions: ((String) -> [String])?
+    var onSuggest: ((String) -> [String])?
+    var onTab: (() -> Void)?
+    var onArrowUp: (() -> Void)?
+    var onArrowDown: (() -> Void)?
+    var onEnter: (() -> Void)?
+    var onEscape: (() -> Void)?
 
     func makeNSView(context: Context) -> NSScrollView {
         let scroll = NSScrollView()
@@ -49,110 +53,55 @@ struct CodeEditor: NSViewRepresentable {
         var parent: CodeEditor
         init(_ parent: CodeEditor) { self.parent = parent }
 
+        private var previousLength = 0
+
         func textDidChange(_ notification: Notification) {
             guard let tv = notification.object as? NSTextView else { return }
+            let isDelete = tv.string.count < previousLength
+            previousLength = tv.string.count
             parent.text = tv.string
             parent.highlight(tv)
-            triggerCompletionIfNeeded(tv)
-        }
-
-        private func triggerCompletionIfNeeded(_ tv: NSTextView) {
-            let sel = tv.selectedRange()
-            guard sel.length == 0, sel.location > 0 else { return }
-            let ns = tv.string as NSString
-            guard sel.location <= ns.length else { return }
-
-            let partial = currentWordPrefix(in: tv.string, cursor: sel.location)
-            guard let word = partial, !word.isEmpty else { return }
-
-            // Check if we have anything to suggest
-            let allFunctions = mySQLFunctions.union(mariadbFunctions).union(pgsqlFunctions)
-            let funcs = allFunctions.filter { $0.lowercased().hasPrefix(word.lowercased()) }
-            var tables: [String] = []
-            if isTableNameContext(in: tv.string, cursor: sel.location), let t = parent.tableSuggestions {
-                tables = t(word)
+            if !isDelete, let onSuggest = parent.onSuggest {
+                let partial = currentWord(in: tv.string, cursor: tv.selectedRange().location)
+                if let word = partial, word.count >= 1 {
+                    _ = onSuggest(word)
+                }
             }
-            guard !funcs.isEmpty || !tables.isEmpty else { return }
-
-            tv.complete(nil)
         }
 
-        /// Extract the partial word at cursor position.
-        private func currentWordPrefix(in text: String, cursor: Int) -> String? {
+        func textView(_ textView: NSTextView, doCommandBy commandSelector: Selector) -> Bool {
+            if commandSelector == #selector(NSResponder.insertTab(_:)) {
+                if parent.onTab != nil { parent.onTab!(); return true }
+            }
+            if commandSelector == #selector(NSResponder.moveUp(_:)) {
+                if parent.onArrowUp != nil { parent.onArrowUp!(); return true }
+            }
+            if commandSelector == #selector(NSResponder.moveDown(_:)) {
+                if parent.onArrowDown != nil { parent.onArrowDown!(); return true }
+            }
+            if commandSelector == #selector(NSResponder.insertNewline(_:)) {
+                if parent.onEnter != nil { parent.onEnter!(); return true }
+            }
+            if commandSelector == #selector(NSResponder.cancelOperation(_:)) {
+                if parent.onEscape != nil { parent.onEscape!(); return true }
+            }
+            return false
+        }
+
+        /// Extract the word being typed at cursor position.
+        private func currentWord(in text: String, cursor: Int) -> String? {
             let ns = text as NSString
             guard cursor > 0, cursor <= ns.length else { return nil }
             var start = cursor - 1
             while start >= 0 {
                 let ch = ns.character(at: start)
-                if ch.isASCIIWordCharacter { start -= 1 } else { break }
+                if (ch >= 0x41 && ch <= 0x5A) || (ch >= 0x61 && ch <= 0x7A) || (ch >= 0x30 && ch <= 0x39) || ch == 0x5F {
+                    start -= 1
+                } else { break }
             }
             start += 1
             guard start < cursor else { return nil }
             return ns.substring(with: NSRange(location: start, length: cursor - start))
-        }
-
-        /// Check if cursor follows a keyword that expects table names.
-        private func isColumnContext(in text: String, cursor: Int) -> Bool {
-        let ns = text as NSString
-        let prefix = ns.substring(to: min(cursor, ns.length))
-        let words = prefix.split { $0.isWhitespace || $0 == "\n" || $0 == "," || $0 == "(" }
-            .map { $0.trimmingCharacters(in: .whitespaces) }
-            .filter { !$0.isEmpty }
-        guard words.count >= 2 else { return false }
-        let contextKeywords: Set<String> = [
-            "WHERE", "AND", "OR", "ORDER BY", "GROUP BY", "HAVING",
-            "ON", "SET", "SELECT", "BETWEEN", "IN", "NOT IN",
-            "IS NULL", "IS NOT NULL", "LIKE",
-        ]
-        let prev = words[words.count - 2].uppercased()
-        for kw in contextKeywords {
-            if prev.hasSuffix(kw) || prev == kw { return true }
-        }
-        // Also suggest columns after a comma in SELECT clause
-        if prev == "," && words.count >= 3 {
-            let prev2 = words[words.count - 3].uppercased()
-            if prev2 == "SELECT" || prev2 == "," { return true }
-        }
-        return false
-    }
-
-    private func isTableNameContext(in text: String, cursor: Int) -> Bool {
-            let keywords = Set(["FROM", "JOIN", "INTO", "UPDATE", "TABLE", "ON"])
-            let ns = text as NSString
-            guard cursor > 0 else { return false }
-            let prefix = ns.substring(to: min(cursor, ns.length))
-            let words = prefix.split { $0.isWhitespace || $0 == "\n" || $0 == "," }
-            guard words.count >= 2 else { return false }
-            let prev = String(words[words.count - 2]).uppercased()
-            return keywords.contains(prev)
-        }
-
-        // MARK: - NSTextViewDelegate completions
-
-        // Cancel completion popup on backspace so it deletes characters instead
-        func textView(_ textView: NSTextView, shouldChangeTextIn affectedCharRange: NSRange, replacementString: String?) -> Bool {
-            if replacementString == nil || replacementString?.isEmpty == true {
-                textView.complete(nil)
-            }
-            return true
-        }
-
-        func textView(_ textView: NSTextView, completions words: [String], forPartialWordRange charRange: NSRange, indexOfSelectedItem index: UnsafeMutablePointer<Int>?) -> [String] {
-            let context = analyzeSQLContext(textView.string, cursor: charRange.location)
-            let partial = (textView.string as NSString).substring(with: charRange)
-
-            let result = sqlSuggestions(
-                for: context,
-                partial: partial,
-                tableFetcher: { prefix in
-                    parent.tableSuggestions?(prefix) ?? []
-                },
-                columnFetcher: { prefix in
-                    parent.columnSuggestions?(prefix) ?? []
-                }
-            )
-
-            return result.isEmpty ? words : result
         }
     }
 
@@ -250,16 +199,4 @@ func formatSQL(_ sql: String) -> String {
     }
 
     return result
-}
-
-// MARK: - Unicode helper
-
-private extension UInt16 {
-    /// ASCII letters, digits, underscore — valid inside a SQL identifier / function name.
-    var isASCIIWordCharacter: Bool {
-        (self >= 0x41 && self <= 0x5A) ||  // A-Z
-        (self >= 0x61 && self <= 0x7A) ||  // a-z
-        (self >= 0x30 && self <= 0x39) ||  // 0-9
-        self == 0x5F                       // _
-    }
 }
