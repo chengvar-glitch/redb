@@ -208,6 +208,14 @@ struct CodeEditor: NSViewRepresentable {
 
         // MARK: - NSTextViewDelegate completions
 
+        // Cancel completion popup on backspace so it deletes characters instead
+        func textView(_ textView: NSTextView, shouldChangeTextIn affectedCharRange: NSRange, replacementString: String?) -> Bool {
+            if replacementString == nil || replacementString?.isEmpty == true {
+                textView.complete(nil)
+            }
+            return true
+        }
+
         func textView(_ textView: NSTextView, completions words: [String], forPartialWordRange charRange: NSRange, indexOfSelectedItem index: UnsafeMutablePointer<Int>?) -> [String] {
             let partial = (textView.string as NSString).substring(with: charRange).lowercased()
 

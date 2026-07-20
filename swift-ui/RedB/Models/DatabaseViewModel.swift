@@ -221,7 +221,8 @@ final class DatabaseViewModel: ObservableObject {
     // -- Saved Queries --
     @Published var savedQueries: [SavedQuery] = []
 
-    // -- 已废弃：quick view 直接走 query tab
+    // -- Quick View 加载状态 --
+    @Published var quickViewLoading = false
 
     // -- Row Limit --
     @Published var rowLimit: Int = 200
@@ -388,10 +389,9 @@ final class DatabaseViewModel: ObservableObject {
     // MARK: - Query
 
     @discardableResult
-    func newQueryTab(sql: String = "", loading: Bool = false) -> QueryTab {
+    func newQueryTab(sql: String = "") -> QueryTab {
         let n = queryTabs.count + 1
         let tab = QueryTab(title: "Query \(n)", sqlInput: sql)
-        if loading { tab.queryLoadState = .loading }
         queryTabs.append(tab)
         activeQueryTabId = tab.id
         return tab
@@ -528,8 +528,16 @@ final class DatabaseViewModel: ObservableObject {
     func quickView(table: TableInfo) async {
         let q = selectedConnection?.dbType == .mysql || selectedConnection?.dbType == .mariaDb ? "" : "\""
         let sql = "SELECT * FROM \(q)\(table.name)\(q) LIMIT \(rowLimit);"
-        let tab = newQueryTab(sql: sql, loading: true)
-        await executeQuery()
+        quickViewLoading = true
+        defer { quickViewLoading = false }
+        let result: QueryResult
+        do {
+            result = try await bridge.executeQuery(sql)
+        } catch {
+            result = QueryResult(columns: [], rows: [], rowsAffected: 0, executionTimeMs: 0)
+        }
+        let tab = newQueryTab(sql: sql)
+        tab.queryLoadState = .success([result])
         tab.title = table.name
     }
 

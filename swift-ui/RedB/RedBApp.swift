@@ -85,7 +85,18 @@ struct ContentView: View {
 
     @ViewBuilder
     private var detailContent: some View {
-        SQLQueryView()
+        if vm.quickViewLoading {
+            VStack(spacing: 12) {
+                ProgressView()
+                    .controlSize(.large)
+                Text("Running query…")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else {
+            SQLQueryView()
+        }
     }
 
     // MARK: Toolbar
