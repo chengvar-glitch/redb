@@ -85,75 +85,7 @@ struct ContentView: View {
 
     @ViewBuilder
     private var detailContent: some View {
-        if let qvr = vm.quickViewResult {
-            quickResultView(qvr)
-        } else if let table = vm.selectedTable {
-            detailTabView(table: table)
-        } else {
-            SQLQueryView()
-        }
-    }
-
-    private func quickResultView(_ result: QueryResult) -> some View {
-        VStack(spacing: 0) {
-            HStack {
-                Button {
-                    vm.quickViewResult = nil
-                } label: {
-                    HStack(spacing: 4) {
-                        Image(systemName: "chevron.left")
-                        Text("Back")
-                    }
-                }
-                .buttonStyle(.borderless)
-                .controlSize(.small)
-
-                Spacer()
-
-                Text("Quick View")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-            }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 4)
-
-            Divider()
-
-            QueryResultView(result: result)
-        }
-    }
-
-    @State private var detailTab: DetailTab = .query
-
-    private enum DetailTab: String, CaseIterable, Identifiable {
-        case structure = "Structure"
-        case query = "Query"
-
-        var id: String { rawValue }
-    }
-
-    @ViewBuilder
-    private func detailTabView(table: TableInfo) -> some View {
-        VStack(spacing: 0) {
-            Picker("View", selection: $detailTab) {
-                ForEach(DetailTab.allCases) { tab in
-                    Text(tab.rawValue).tag(tab)
-                }
-            }
-            .pickerStyle(.segmented)
-            .padding(.horizontal)
-            .padding(.vertical, 8)
-            .background(.ultraThinMaterial)
-
-            Divider()
-
-            switch detailTab {
-            case .structure:
-                TableStructureView(table: table, onRequestQuery: { detailTab = .query })
-            case .query:
-                SQLQueryView()
-            }
-        }
+        SQLQueryView()
     }
 
     // MARK: Toolbar

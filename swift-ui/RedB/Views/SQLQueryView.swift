@@ -158,6 +158,8 @@ private struct QueryTabContentView: View {
     @FocusState private var isEditorFocused: Bool
 
     @State private var editorHeight: CGFloat = 160
+    @State private var showSaveDialog = false
+    @State private var saveName: String = ""
 
     init(tab: QueryTab, onSave: ((QueryTab) -> Void)? = nil) {
         self.tab = tab
@@ -166,12 +168,32 @@ private struct QueryTabContentView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            editorPane
-                .frame(height: editorHeight)
-
-            resizableDivider
-
-            resultsPane
+            if tab.queryLoadState.isLoaded || tab.queryLoadState.isLoading {
+                editorPane
+                    .frame(height: editorHeight)
+                resizableDivider
+                resultsPane
+            } else {
+                editorPane
+                    .frame(maxHeight: .infinity)
+            }
+        }
+        .background(
+            Button("") {
+                saveName = tab.title
+                showSaveDialog = true
+            }
+            .keyboardShortcut("s", modifiers: [.command])
+            .hidden()
+        )
+        .alert("Save Query", isPresented: $showSaveDialog) {
+            TextField("Query name", text: $saveName)
+            Button("Cancel", role: .cancel) { }
+            Button("Save") {
+                vm.saveQuery(name: saveName, sql: tab.sqlInput)
+            }
+        } message: {
+            Text("Enter a name for this query")
         }
     }
 
@@ -209,7 +231,9 @@ private struct QueryTabContentView: View {
                 runButton
             }
 
-            CodeEditor(text: $tab.sqlInput)
+            CodeEditor(text: $tab.sqlInput, tableSuggestions: { prefix in
+                vm.tableSuggestions(matching: prefix)
+            })
                 .frame(minHeight: 80)
                 .clipShape(RoundedRectangle(cornerRadius: 8))
                 .overlay(

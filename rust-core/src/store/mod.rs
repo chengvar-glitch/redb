@@ -130,6 +130,127 @@ impl ConnectionStore {
     }
 }
 
+// ---------------------------------------------------------------------------
+// QueryStore: saved queries + table usage
+// ---------------------------------------------------------------------------
+
+/// Thread-safe store for saved queries and table usage statistics.
+#[derive(uniffi::Object)]
+pub struct QueryStore {
+    queries_path: String,
+    usage_path: String,
+    lock: Mutex<()>,
+}
+
+#[uniffi::export]
+impl QueryStore {
+    #[uniffi::constructor]
+    pub fn open(base_dir: String) -> Result<Self, DbError> {
+        let dir = Path::new(&base_dir);
+        fs::create_dir_all(dir).map_err(|e| DbError::ConnectionError {
+            message: format!("Failed to create store directory: {e}"),
+        })?;
+
+        let queries_path = dir.join("saved_queries.json");
+        let usage_path = dir.join("table_usage.json");
+
+        // Init saved_queries.json
+        if !queries_path.exists() {
+            fs::write(&queries_path, "[]").map_err(|e| DbError::ConnectionError {
+                message: format!("Failed to init queries file: {e}"),
+            })?;
+        }
+
+        // Init table_usage.json
+        if !usage_path.exists() {
+            fs::write(&usage_path, "[]").map_err(|e| DbError::ConnectionError {
+                message: format!("Failed to init usage file: {e}"),
+            })?;
+        }
+
+        Ok(Self {
+            queries_path: queries_path.to_string_lossy().to_string(),
+            usage_path: usage_path.to_string_lossy().to_string(),
+            lock: Mutex::new(()),
+        })
+    }
+
+    // -- Saved Queries --
+
+    pub fn save_query(&self, id: String, name: String, sql: String, created_at: i64) -> Result<(), DbError> {
+        let _guard = self.lock.lock().unwrap();
+        let mut queries: Vec<SavedQuery> = self.read_json(&self.queries_path)?;
+        if let Some(existing) = queries.iter_mut().find(|q| q.id == id) {
+            existing.name = name;
+            existing.sql = sql;
+        } else {
+            queries.push(SavedQuery { id, name, sql, created_at });
+        }
+        self.write_json(&self.queries_path, &queries)
+    }
+
+    pub fn list_saved_queries(&self) -> Result<Vec<SavedQuery>, DbError> {
+        let _guard = self.lock.lock().unwrap();
+        self.read_json(&self.queries_path)
+    }
+
+    pub fn delete_saved_query(&self, id: String) -> Result<(), DbError> {
+        let _guard = self.lock.lock().unwrap();
+        let mut queries: Vec<SavedQuery> = self.read_json(&self.queries_path)?;
+        queries.retain(|q| q.id != id);
+        self.write_json(&self.queries_path, &queries)
+    }
+
+    // -- Table Usage --
+
+    pub fn record_table_usage(&self, table_name: String) -> Result<(), DbError> {
+        let _guard = self.lock.lock().unwrap();
+        let mut usage: Vec<TableUsageEntry> = self.read_json(&self.usage_path)?;
+        if let Some(entry) = usage.iter_mut().find(|e| e.table_name == table_name) {
+            entry.count += 1;
+        } else {
+            usage.push(TableUsageEntry { table_name, count: 1 });
+        }
+        self.write_json(&self.usage_path, &usage)
+    }
+
+    pub fn get_table_usage(&self) -> Result<Vec<TableUsageEntry>, DbError> {
+        let _guard = self.lock.lock().unwrap();
+        self.read_json(&self.usage_path)
+    }
+
+    pub fn reset_table_usage(&self) -> Result<(), DbError> {
+        let _guard = self.lock.lock().unwrap();
+        self.write_json(&self.usage_path, &Vec::<TableUsageEntry>::new())
+    }
+}
+
+// Internal helpers
+impl QueryStore {
+    fn read_json<T: serde::de::DeserializeOwned>(&self, path: &str) -> Result<T, DbError> {
+        let data = fs::read_to_string(path).map_err(|e| DbError::QueryError {
+            message: format!("Failed to read store file: {e}"),
+        })?;
+        serde_json::from_str(&data).map_err(|e| DbError::QueryError {
+            message: format!("Failed to parse store file: {e}"),
+        })
+    }
+
+    fn write_json<T: serde::Serialize>(&self, path: &str, value: &T) -> Result<(), DbError> {
+        let data = serde_json::to_string_pretty(value).map_err(|e| DbError::QueryError {
+            message: format!("Failed to serialize store: {e}"),
+        })?;
+        let tmp = format!("{path}.tmp");
+        fs::write(&tmp, &data).map_err(|e| DbError::QueryError {
+            message: format!("Failed to write store: {e}"),
+        })?;
+        fs::rename(&tmp, path).map_err(|e| DbError::QueryError {
+            message: format!("Failed to commit store: {e}"),
+        })?;
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

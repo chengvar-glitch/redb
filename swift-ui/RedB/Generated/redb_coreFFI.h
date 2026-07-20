@@ -331,6 +331,51 @@ RustBuffer uniffi_redb_core_fn_method_databasemanager_list_tables(void*_Nonnull 
 RustBuffer uniffi_redb_core_fn_method_databasemanager_status(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_REDB_CORE_FN_CLONE_QUERYSTORE
+#define UNIFFI_FFIDEF_UNIFFI_REDB_CORE_FN_CLONE_QUERYSTORE
+void*_Nonnull uniffi_redb_core_fn_clone_querystore(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_REDB_CORE_FN_FREE_QUERYSTORE
+#define UNIFFI_FFIDEF_UNIFFI_REDB_CORE_FN_FREE_QUERYSTORE
+void uniffi_redb_core_fn_free_querystore(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_REDB_CORE_FN_CONSTRUCTOR_QUERYSTORE_OPEN
+#define UNIFFI_FFIDEF_UNIFFI_REDB_CORE_FN_CONSTRUCTOR_QUERYSTORE_OPEN
+void*_Nonnull uniffi_redb_core_fn_constructor_querystore_open(RustBuffer base_dir, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_REDB_CORE_FN_METHOD_QUERYSTORE_DELETE_SAVED_QUERY
+#define UNIFFI_FFIDEF_UNIFFI_REDB_CORE_FN_METHOD_QUERYSTORE_DELETE_SAVED_QUERY
+void uniffi_redb_core_fn_method_querystore_delete_saved_query(void*_Nonnull ptr, RustBuffer id, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_REDB_CORE_FN_METHOD_QUERYSTORE_GET_TABLE_USAGE
+#define UNIFFI_FFIDEF_UNIFFI_REDB_CORE_FN_METHOD_QUERYSTORE_GET_TABLE_USAGE
+RustBuffer uniffi_redb_core_fn_method_querystore_get_table_usage(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_REDB_CORE_FN_METHOD_QUERYSTORE_LIST_SAVED_QUERIES
+#define UNIFFI_FFIDEF_UNIFFI_REDB_CORE_FN_METHOD_QUERYSTORE_LIST_SAVED_QUERIES
+RustBuffer uniffi_redb_core_fn_method_querystore_list_saved_queries(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_REDB_CORE_FN_METHOD_QUERYSTORE_RECORD_TABLE_USAGE
+#define UNIFFI_FFIDEF_UNIFFI_REDB_CORE_FN_METHOD_QUERYSTORE_RECORD_TABLE_USAGE
+void uniffi_redb_core_fn_method_querystore_record_table_usage(void*_Nonnull ptr, RustBuffer table_name, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_REDB_CORE_FN_METHOD_QUERYSTORE_RESET_TABLE_USAGE
+#define UNIFFI_FFIDEF_UNIFFI_REDB_CORE_FN_METHOD_QUERYSTORE_RESET_TABLE_USAGE
+void uniffi_redb_core_fn_method_querystore_reset_table_usage(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_REDB_CORE_FN_METHOD_QUERYSTORE_SAVE_QUERY
+#define UNIFFI_FFIDEF_UNIFFI_REDB_CORE_FN_METHOD_QUERYSTORE_SAVE_QUERY
+void uniffi_redb_core_fn_method_querystore_save_query(void*_Nonnull ptr, RustBuffer id, RustBuffer name, RustBuffer sql, int64_t created_at, RustCallStatus *_Nonnull out_status
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_REDB_CORE_FN_FUNC_CREATE_DATABASE_MANAGER
 #define UNIFFI_FFIDEF_UNIFFI_REDB_CORE_FN_FUNC_CREATE_DATABASE_MANAGER
 void*_Nonnull uniffi_redb_core_fn_func_create_database_manager(RustBuffer config, RustCallStatus *_Nonnull out_status
@@ -682,6 +727,42 @@ uint16_t uniffi_redb_core_checksum_method_databasemanager_status(void
     
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_REDB_CORE_CHECKSUM_METHOD_QUERYSTORE_DELETE_SAVED_QUERY
+#define UNIFFI_FFIDEF_UNIFFI_REDB_CORE_CHECKSUM_METHOD_QUERYSTORE_DELETE_SAVED_QUERY
+uint16_t uniffi_redb_core_checksum_method_querystore_delete_saved_query(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_REDB_CORE_CHECKSUM_METHOD_QUERYSTORE_GET_TABLE_USAGE
+#define UNIFFI_FFIDEF_UNIFFI_REDB_CORE_CHECKSUM_METHOD_QUERYSTORE_GET_TABLE_USAGE
+uint16_t uniffi_redb_core_checksum_method_querystore_get_table_usage(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_REDB_CORE_CHECKSUM_METHOD_QUERYSTORE_LIST_SAVED_QUERIES
+#define UNIFFI_FFIDEF_UNIFFI_REDB_CORE_CHECKSUM_METHOD_QUERYSTORE_LIST_SAVED_QUERIES
+uint16_t uniffi_redb_core_checksum_method_querystore_list_saved_queries(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_REDB_CORE_CHECKSUM_METHOD_QUERYSTORE_RECORD_TABLE_USAGE
+#define UNIFFI_FFIDEF_UNIFFI_REDB_CORE_CHECKSUM_METHOD_QUERYSTORE_RECORD_TABLE_USAGE
+uint16_t uniffi_redb_core_checksum_method_querystore_record_table_usage(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_REDB_CORE_CHECKSUM_METHOD_QUERYSTORE_RESET_TABLE_USAGE
+#define UNIFFI_FFIDEF_UNIFFI_REDB_CORE_CHECKSUM_METHOD_QUERYSTORE_RESET_TABLE_USAGE
+uint16_t uniffi_redb_core_checksum_method_querystore_reset_table_usage(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_REDB_CORE_CHECKSUM_METHOD_QUERYSTORE_SAVE_QUERY
+#define UNIFFI_FFIDEF_UNIFFI_REDB_CORE_CHECKSUM_METHOD_QUERYSTORE_SAVE_QUERY
+uint16_t uniffi_redb_core_checksum_method_querystore_save_query(void
+    
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_REDB_CORE_CHECKSUM_CONSTRUCTOR_CONNECTIONSTORE_OPEN
 #define UNIFFI_FFIDEF_UNIFFI_REDB_CORE_CHECKSUM_CONSTRUCTOR_CONNECTIONSTORE_OPEN
 uint16_t uniffi_redb_core_checksum_constructor_connectionstore_open(void
@@ -691,6 +772,12 @@ uint16_t uniffi_redb_core_checksum_constructor_connectionstore_open(void
 #ifndef UNIFFI_FFIDEF_UNIFFI_REDB_CORE_CHECKSUM_CONSTRUCTOR_DATABASEMANAGER_NEW
 #define UNIFFI_FFIDEF_UNIFFI_REDB_CORE_CHECKSUM_CONSTRUCTOR_DATABASEMANAGER_NEW
 uint16_t uniffi_redb_core_checksum_constructor_databasemanager_new(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_REDB_CORE_CHECKSUM_CONSTRUCTOR_QUERYSTORE_OPEN
+#define UNIFFI_FFIDEF_UNIFFI_REDB_CORE_CHECKSUM_CONSTRUCTOR_QUERYSTORE_OPEN
+uint16_t uniffi_redb_core_checksum_constructor_querystore_open(void
     
 );
 #endif

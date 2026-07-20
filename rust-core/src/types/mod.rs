@@ -127,6 +127,24 @@ impl DatabaseConfig {
 }
 
 // ---------------------------------------------------------------------------
+// Persisted query data
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, uniffi::Record)]
+pub struct SavedQuery {
+    pub id: String,
+    pub name: String,
+    pub sql: String,
+    pub created_at: i64,
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, uniffi::Record)]
+pub struct TableUsageEntry {
+    pub table_name: String,
+    pub count: i32,
+}
+
+// ---------------------------------------------------------------------------
 // Error
 // ---------------------------------------------------------------------------
 

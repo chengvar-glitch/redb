@@ -110,20 +110,17 @@ struct ConnectionProfile: Identifiable, Hashable {
 // MARK: - Store Path
 
 private let storeFileName = "redb_connections.json"
-private let savedQueriesFileName = "redb_saved_queries.json"
 
-private func defaultStorePath() -> String {
+private func appSupportDir() -> String {
     let paths = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)
     let dir = paths[0].appendingPathComponent("RedB")
     try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-    return dir.appendingPathComponent(storeFileName).path
+    return dir.path
 }
 
-private func savedQueriesPath() -> String {
-    let paths = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)
-    let dir = paths[0].appendingPathComponent("RedB")
-    try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-    return dir.appendingPathComponent(savedQueriesFileName).path
+private func defaultStorePath() -> String {
+    let dir = appSupportDir()
+    return (dir as NSString).appendingPathComponent(storeFileName)
 }
 
 // MARK: - Load State
@@ -150,6 +147,7 @@ final class DatabaseViewModel: ObservableObject {
     let bridge = RustBridge()
 
     private let store: ConnectionStore?
+    private let queryStore: QueryStore?
 
     // -- Connections --
     @Published var selectedDbType: DbType = .sqlite
@@ -158,7 +156,6 @@ final class DatabaseViewModel: ObservableObject {
 
     // -- Tables --
     @Published var tablesLoadState: LoadState<[TableInfo]> = .idle
-    @Published var selectedTable: TableInfo?
 
     // -- Query --
     @Published var queryTabs: [QueryTab] = []
@@ -169,14 +166,38 @@ final class DatabaseViewModel: ObservableObject {
         return queryTabs.first { $0.id == id }
     }
 
+    // -- Table Usage (for auto-complete) --
+    @Published var tableUsage: [String: Int] = [:]
+
+    var availableTableNames: [String] {
+        guard case .success(let tables) = tablesLoadState else { return [] }
+        return tables.map(\.name)
+    }
+
+    func tableSuggestions(matching prefix: String) -> [String] {
+        let lower = prefix.lowercased()
+        let all = availableTableNames
+        let filtered = all.filter { $0.lowercased().hasPrefix(lower) }
+        return filtered.sorted { a, b in
+            let af = tableUsage[a] ?? 0
+            let bf = tableUsage[b] ?? 0
+            if af != bf { return af > bf }
+            return a.localizedCompare(b) == .orderedAscending
+        }
+    }
+
+    func recordTableUsage(_ table: String) {
+        tableUsage[table, default: 0] += 1
+        try? queryStore?.recordTableUsage(tableName: table)
+    }
+
     // -- Saved Queries --
     @Published var savedQueries: [SavedQuery] = []
 
-    // -- Quick View --
-    @Published var quickViewResult: QueryResult?
+    // -- 已废弃：quick view 直接走 query tab
 
     // -- Row Limit --
-    @Published var rowLimit: Int = 50
+    @Published var rowLimit: Int = 200
 
     // -- Connection state --
     @Published var isConnecting: Bool = false
@@ -197,9 +218,11 @@ final class DatabaseViewModel: ObservableObject {
             print("[RedB] Store opened successfully")
         }
         self.store = s
+        self.queryStore = try? QueryStore.open(baseDir: appSupportDir())
 
         loadSavedConnections()
         loadSavedQueries()
+        loadTableUsage()
 
         let savedSql = UserDefaults.standard.string(forKey: lastQueryKey) ?? ""
         let tab = QueryTab(title: "Query 1", sqlInput: savedSql)
@@ -277,7 +300,6 @@ final class DatabaseViewModel: ObservableObject {
     func disconnect() async {
         try? await bridge.disconnect()
         selectedConnection = nil
-        selectedTable = nil
         tablesLoadState = .idle
         queryTabs.removeAll()
         activeQueryTabId = nil
@@ -344,13 +366,12 @@ final class DatabaseViewModel: ObservableObject {
     // MARK: - Query
 
     @discardableResult
-    func newQueryTab(sql: String = "") -> QueryTab {
+    func newQueryTab(sql: String = "", loading: Bool = false) -> QueryTab {
         let n = queryTabs.count + 1
         let tab = QueryTab(title: "Query \(n)", sqlInput: sql)
+        if loading { tab.queryLoadState = .loading }
         queryTabs.append(tab)
         activeQueryTabId = tab.id
-        selectedTable = nil
-        quickViewResult = nil
         return tab
     }
 
@@ -370,6 +391,16 @@ final class DatabaseViewModel: ObservableObject {
         guard !trimmed.isEmpty else { return }
 
         UserDefaults.standard.set(trimmed, forKey: lastQueryKey)
+
+        // Store base SQL (without any trailing LIMIT) for lazy loading
+        var clean = trimmed
+        if let limitRange = clean.range(of: "LIMIT", options: [.caseInsensitive, .backwards]) {
+            let before = clean[..<limitRange.lowerBound].trimmingCharacters(in: .whitespaces)
+            if before.hasSuffix("LIMIT") || before.hasSuffix("limit") {
+                clean = String(before)
+            }
+        }
+        tab.baseSql = clean
 
         let statements = splitSQL(trimmed)
         guard !statements.isEmpty else { return }
@@ -394,6 +425,35 @@ final class DatabaseViewModel: ObservableObject {
         }
 
         tab.queryLoadState = .success(results)
+
+        // Record table usage for auto-complete
+        for stmt in statements {
+            for table in extractTableNames(from: stmt) {
+                recordTableUsage(table)
+            }
+        }
+    }
+
+    private func extractTableNames(from sql: String) -> Set<String> {
+        let upper = sql.uppercased()
+        let keywords: Set<String> = ["FROM", "JOIN", "INTO", "UPDATE", "TABLE", "INTO"]
+        var names = Set<String>()
+        let parts = upper.components(separatedBy: .whitespacesAndNewlines)
+        for (i, word) in parts.enumerated() {
+            if keywords.contains(word) {
+                let nextIdx = i + 1
+                if nextIdx < parts.count {
+                    var name = parts[nextIdx].trimmingCharacters(in: CharacterSet(charactersIn: "\"'`;"))
+                    if !name.isEmpty && !keywords.contains(name) {
+                        // Skip if looks like a subquery or function
+                        if !name.hasPrefix("(") && !name.hasPrefix("SELECT") {
+                            names.insert(name)
+                        }
+                    }
+                }
+            }
+        }
+        return names
     }
 
     private func splitSQL(_ sql: String) -> [String] {
@@ -402,55 +462,53 @@ final class DatabaseViewModel: ObservableObject {
             .filter { !$0.isEmpty }
     }
 
+    // MARK: - Table Usage
+
+    private func loadTableUsage() {
+        guard let qs = queryStore,
+              let entries = try? qs.getTableUsage()
+        else { return }
+        tableUsage = Dictionary(uniqueKeysWithValues: entries.map { ($0.tableName, Int($0.count)) })
+    }
+
     // MARK: - Saved Queries
 
     private func loadSavedQueries() {
-        let path = savedQueriesPath()
-        guard let data = try? Data(contentsOf: URL(fileURLWithPath: path)),
-              let decoded = try? JSONDecoder().decode([SavedQuery].self, from: data)
-        else { return }
-        savedQueries = decoded
-    }
-
-    private func persistSavedQueries() {
-        let path = savedQueriesPath()
-        guard let data = try? JSONEncoder().encode(savedQueries) else { return }
-        try? data.write(to: URL(fileURLWithPath: path))
+        guard let qs = queryStore, let list = try? qs.listSavedQueries() else { return }
+        savedQueries = list
     }
 
     func saveQuery(name: String, sql: String) {
-        let query = SavedQuery(name: name, sql: sql)
-        savedQueries.append(query)
-        persistSavedQueries()
+        guard let qs = queryStore else { return }
+        let id = UUID().uuidString
+        let created = Int64(Date.now.timeIntervalSince1970)
+        if (try? qs.saveQuery(id: id, name: name, sql: sql, createdAt: created)) != nil {
+            savedQueries.append(SavedQuery(id: id, name: name, sql: sql, createdAt: created))
+        }
     }
 
     func deleteSavedQuery(_ query: SavedQuery) {
+        guard let qs = queryStore, (try? qs.deleteSavedQuery(id: query.id)) != nil else { return }
         savedQueries.removeAll { $0.id == query.id }
-        persistSavedQueries()
     }
 
     func renameSavedQuery(_ query: SavedQuery, name: String) {
-        guard let i = savedQueries.firstIndex(where: { $0.id == query.id }) else { return }
+        guard let qs = queryStore else { return }
+        let created = query.createdAt
+        guard (try? qs.saveQuery(id: query.id, name: name, sql: query.sql, createdAt: created)) != nil,
+              let i = savedQueries.firstIndex(where: { $0.id == query.id })
+        else { return }
         savedQueries[i].name = name
-        persistSavedQueries()
     }
 
     // MARK: - Quick View
 
     func quickView(table: TableInfo) async {
         let q = selectedConnection?.dbType == .mysql || selectedConnection?.dbType == .mariaDb ? "" : "\""
-        let sql = "SELECT * FROM \(q)\(table.name)\(q) LIMIT 50;"
-        do {
-            let r = try await bridge.executeQuery(sql)
-            quickViewResult = r
-        } catch {
-            quickViewResult = QueryResult(
-                columns: [],
-                rows: [],
-                rowsAffected: 0,
-                executionTimeMs: 0
-            )
-        }
+        let sql = "SELECT * FROM \(q)\(table.name)\(q) LIMIT \(rowLimit);"
+        let tab = newQueryTab(sql: sql, loading: true)
+        await executeQuery()
+        tab.title = table.name
     }
 
     func isConnected(_ profile: ConnectionProfile) -> Bool {

@@ -415,6 +415,22 @@ fileprivate struct FfiConverterUInt32: FfiConverterPrimitive {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterInt32: FfiConverterPrimitive {
+    typealias FfiType = Int32
+    typealias SwiftType = Int32
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> Int32 {
+        return try lift(readInt(&buf))
+    }
+
+    public static func write(_ value: Int32, into buf: inout [UInt8]) {
+        writeInt(&buf, lower(value))
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterUInt64: FfiConverterPrimitive {
     typealias FfiType = UInt64
     typealias SwiftType = UInt64
@@ -924,6 +940,187 @@ public func FfiConverterTypeDatabaseManager_lower(_ value: DatabaseManager) -> U
 }
 
 
+
+
+/**
+ * Thread-safe store for saved queries and table usage statistics.
+ */
+public protocol QueryStoreProtocol : AnyObject {
+    
+    func deleteSavedQuery(id: String) throws 
+    
+    func getTableUsage() throws  -> [TableUsageEntry]
+    
+    func listSavedQueries() throws  -> [SavedQuery]
+    
+    func recordTableUsage(tableName: String) throws 
+    
+    func resetTableUsage() throws 
+    
+    func saveQuery(id: String, name: String, sql: String, createdAt: Int64) throws 
+    
+}
+
+/**
+ * Thread-safe store for saved queries and table usage statistics.
+ */
+open class QueryStore:
+    QueryStoreProtocol {
+    fileprivate let pointer: UnsafeMutableRawPointer!
+
+    /// Used to instantiate a [FFIObject] without an actual pointer, for fakes in tests, mostly.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public struct NoPointer {
+        public init() {}
+    }
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+    required public init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
+        self.pointer = pointer
+    }
+
+    // This constructor can be used to instantiate a fake object.
+    // - Parameter noPointer: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    //
+    // - Warning:
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing [Pointer] the FFI lower functions will crash.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public init(noPointer: NoPointer) {
+        self.pointer = nil
+    }
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public func uniffiClonePointer() -> UnsafeMutableRawPointer {
+        return try! rustCall { uniffi_redb_core_fn_clone_querystore(self.pointer, $0) }
+    }
+    // No primary constructor declared for this class.
+
+    deinit {
+        guard let pointer = pointer else {
+            return
+        }
+
+        try! rustCall { uniffi_redb_core_fn_free_querystore(pointer, $0) }
+    }
+
+    
+public static func `open`(baseDir: String)throws  -> QueryStore {
+    return try  FfiConverterTypeQueryStore.lift(try rustCallWithError(FfiConverterTypeDbError.lift) {
+    uniffi_redb_core_fn_constructor_querystore_open(
+        FfiConverterString.lower(baseDir),$0
+    )
+})
+}
+    
+
+    
+open func deleteSavedQuery(id: String)throws  {try rustCallWithError(FfiConverterTypeDbError.lift) {
+    uniffi_redb_core_fn_method_querystore_delete_saved_query(self.uniffiClonePointer(),
+        FfiConverterString.lower(id),$0
+    )
+}
+}
+    
+open func getTableUsage()throws  -> [TableUsageEntry] {
+    return try  FfiConverterSequenceTypeTableUsageEntry.lift(try rustCallWithError(FfiConverterTypeDbError.lift) {
+    uniffi_redb_core_fn_method_querystore_get_table_usage(self.uniffiClonePointer(),$0
+    )
+})
+}
+    
+open func listSavedQueries()throws  -> [SavedQuery] {
+    return try  FfiConverterSequenceTypeSavedQuery.lift(try rustCallWithError(FfiConverterTypeDbError.lift) {
+    uniffi_redb_core_fn_method_querystore_list_saved_queries(self.uniffiClonePointer(),$0
+    )
+})
+}
+    
+open func recordTableUsage(tableName: String)throws  {try rustCallWithError(FfiConverterTypeDbError.lift) {
+    uniffi_redb_core_fn_method_querystore_record_table_usage(self.uniffiClonePointer(),
+        FfiConverterString.lower(tableName),$0
+    )
+}
+}
+    
+open func resetTableUsage()throws  {try rustCallWithError(FfiConverterTypeDbError.lift) {
+    uniffi_redb_core_fn_method_querystore_reset_table_usage(self.uniffiClonePointer(),$0
+    )
+}
+}
+    
+open func saveQuery(id: String, name: String, sql: String, createdAt: Int64)throws  {try rustCallWithError(FfiConverterTypeDbError.lift) {
+    uniffi_redb_core_fn_method_querystore_save_query(self.uniffiClonePointer(),
+        FfiConverterString.lower(id),
+        FfiConverterString.lower(name),
+        FfiConverterString.lower(sql),
+        FfiConverterInt64.lower(createdAt),$0
+    )
+}
+}
+    
+
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeQueryStore: FfiConverter {
+
+    typealias FfiType = UnsafeMutableRawPointer
+    typealias SwiftType = QueryStore
+
+    public static func lift(_ pointer: UnsafeMutableRawPointer) throws -> QueryStore {
+        return QueryStore(unsafeFromRawPointer: pointer)
+    }
+
+    public static func lower(_ value: QueryStore) -> UnsafeMutableRawPointer {
+        return value.uniffiClonePointer()
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> QueryStore {
+        let v: UInt64 = try readInt(&buf)
+        // The Rust code won't compile if a pointer won't fit in a UInt64.
+        // We have to go via `UInt` because that's the thing that's the size of a pointer.
+        let ptr = UnsafeMutableRawPointer(bitPattern: UInt(truncatingIfNeeded: v))
+        if (ptr == nil) {
+            throw UniffiInternalError.unexpectedNullPointer
+        }
+        return try lift(ptr!)
+    }
+
+    public static func write(_ value: QueryStore, into buf: inout [UInt8]) {
+        // This fiddling is because `Int` is the thing that's the same size as a pointer.
+        // The Rust code won't compile if a pointer won't fit in a `UInt64`.
+        writeInt(&buf, UInt64(bitPattern: Int64(Int(bitPattern: lower(value)))))
+    }
+}
+
+
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeQueryStore_lift(_ pointer: UnsafeMutableRawPointer) throws -> QueryStore {
+    return try FfiConverterTypeQueryStore.lift(pointer)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeQueryStore_lower(_ value: QueryStore) -> UnsafeMutableRawPointer {
+    return FfiConverterTypeQueryStore.lower(value)
+}
+
+
 public struct ColumnInfo {
     public var name: String
     public var dataType: String
@@ -1287,6 +1484,88 @@ public func FfiConverterTypeSavedConnection_lower(_ value: SavedConnection) -> R
 }
 
 
+public struct SavedQuery {
+    public var id: String
+    public var name: String
+    public var sql: String
+    public var createdAt: Int64
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(id: String, name: String, sql: String, createdAt: Int64) {
+        self.id = id
+        self.name = name
+        self.sql = sql
+        self.createdAt = createdAt
+    }
+}
+
+
+
+extension SavedQuery: Equatable, Hashable {
+    public static func ==(lhs: SavedQuery, rhs: SavedQuery) -> Bool {
+        if lhs.id != rhs.id {
+            return false
+        }
+        if lhs.name != rhs.name {
+            return false
+        }
+        if lhs.sql != rhs.sql {
+            return false
+        }
+        if lhs.createdAt != rhs.createdAt {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
+        hasher.combine(name)
+        hasher.combine(sql)
+        hasher.combine(createdAt)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeSavedQuery: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SavedQuery {
+        return
+            try SavedQuery(
+                id: FfiConverterString.read(from: &buf), 
+                name: FfiConverterString.read(from: &buf), 
+                sql: FfiConverterString.read(from: &buf), 
+                createdAt: FfiConverterInt64.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: SavedQuery, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.id, into: &buf)
+        FfiConverterString.write(value.name, into: &buf)
+        FfiConverterString.write(value.sql, into: &buf)
+        FfiConverterInt64.write(value.createdAt, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSavedQuery_lift(_ buf: RustBuffer) throws -> SavedQuery {
+    return try FfiConverterTypeSavedQuery.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSavedQuery_lower(_ value: SavedQuery) -> RustBuffer {
+    return FfiConverterTypeSavedQuery.lower(value)
+}
+
+
 public struct TableInfo {
     public var name: String
     public var schema: String
@@ -1366,6 +1645,72 @@ public func FfiConverterTypeTableInfo_lift(_ buf: RustBuffer) throws -> TableInf
 #endif
 public func FfiConverterTypeTableInfo_lower(_ value: TableInfo) -> RustBuffer {
     return FfiConverterTypeTableInfo.lower(value)
+}
+
+
+public struct TableUsageEntry {
+    public var tableName: String
+    public var count: Int32
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(tableName: String, count: Int32) {
+        self.tableName = tableName
+        self.count = count
+    }
+}
+
+
+
+extension TableUsageEntry: Equatable, Hashable {
+    public static func ==(lhs: TableUsageEntry, rhs: TableUsageEntry) -> Bool {
+        if lhs.tableName != rhs.tableName {
+            return false
+        }
+        if lhs.count != rhs.count {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(tableName)
+        hasher.combine(count)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeTableUsageEntry: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> TableUsageEntry {
+        return
+            try TableUsageEntry(
+                tableName: FfiConverterString.read(from: &buf), 
+                count: FfiConverterInt32.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: TableUsageEntry, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.tableName, into: &buf)
+        FfiConverterInt32.write(value.count, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTableUsageEntry_lift(_ buf: RustBuffer) throws -> TableUsageEntry {
+    return try FfiConverterTypeTableUsageEntry.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeTableUsageEntry_lower(_ value: TableUsageEntry) -> RustBuffer {
+    return FfiConverterTypeTableUsageEntry.lower(value)
 }
 
 // Note that we don't yet support `indirect` for enums.
@@ -1878,6 +2223,31 @@ fileprivate struct FfiConverterSequenceTypeSavedConnection: FfiConverterRustBuff
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterSequenceTypeSavedQuery: FfiConverterRustBuffer {
+    typealias SwiftType = [SavedQuery]
+
+    public static func write(_ value: [SavedQuery], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeSavedQuery.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [SavedQuery] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [SavedQuery]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeSavedQuery.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterSequenceTypeTableInfo: FfiConverterRustBuffer {
     typealias SwiftType = [TableInfo]
 
@@ -1895,6 +2265,31 @@ fileprivate struct FfiConverterSequenceTypeTableInfo: FfiConverterRustBuffer {
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
             seq.append(try FfiConverterTypeTableInfo.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeTableUsageEntry: FfiConverterRustBuffer {
+    typealias SwiftType = [TableUsageEntry]
+
+    public static func write(_ value: [TableUsageEntry], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeTableUsageEntry.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [TableUsageEntry] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [TableUsageEntry]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeTableUsageEntry.read(from: &buf))
         }
         return seq
     }
@@ -2005,10 +2400,31 @@ private var initializationResult: InitializationResult = {
     if (uniffi_redb_core_checksum_method_databasemanager_status() != 44177) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_redb_core_checksum_method_querystore_delete_saved_query() != 30924) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_redb_core_checksum_method_querystore_get_table_usage() != 55421) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_redb_core_checksum_method_querystore_list_saved_queries() != 62865) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_redb_core_checksum_method_querystore_record_table_usage() != 2170) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_redb_core_checksum_method_querystore_reset_table_usage() != 33225) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_redb_core_checksum_method_querystore_save_query() != 37387) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_redb_core_checksum_constructor_connectionstore_open() != 60945) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_redb_core_checksum_constructor_databasemanager_new() != 36212) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_redb_core_checksum_constructor_querystore_open() != 25578) {
         return InitializationResult.apiChecksumMismatch
     }
 

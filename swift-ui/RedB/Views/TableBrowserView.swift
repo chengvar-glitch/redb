@@ -3,7 +3,7 @@ import SwiftUI
 struct TableBrowserView: View {
     @EnvironmentObject var vm: DatabaseViewModel
     @State private var searchText = ""
-    @State private var savedQueriesExpanded = true
+    @State private var savedQueriesExpanded = false
 
     var body: some View {
         Group {
@@ -71,9 +71,6 @@ struct TableBrowserView: View {
         }
         .listStyle(.plain)
         .searchable(text: $searchText, prompt: "Filter tables")
-        .onTapGesture {
-            vm.selectedTable = nil
-        }
     }
 
     // MARK: - Saved Queries Section
@@ -219,7 +216,6 @@ private struct TableRow: View {
     let table: TableInfo
 
     @EnvironmentObject var vm: DatabaseViewModel
-    @State private var lastTap: Date?
 
     private var quote: String {
         guard let db = vm.selectedConnection?.dbType else { return "\"" }
@@ -244,18 +240,6 @@ private struct TableRow: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.vertical, 4)
         .contentShape(Rectangle())
-        .background(vm.selectedTable == table ? Color.accentColor.opacity(0.12) : .clear)
-        .onTapGesture {
-            let now = Date()
-            if let last = lastTap, now.timeIntervalSince(last) < 0.3 {
-                lastTap = nil
-                vm.selectedTable = table
-                Task { await vm.quickView(table: table) }
-            } else {
-                lastTap = now
-                vm.selectedTable = table
-            }
-        }
         .contextMenu {
             Button {
                 Task { await vm.quickView(table: table) }
@@ -263,8 +247,6 @@ private struct TableRow: View {
                 Label("Quick View", systemImage: "eye")
             }
             .keyboardShortcut(.return, modifiers: [.command, .shift])
-
-            Divider()
 
             Button {
                 vm.newQueryTab(sql: "SELECT * FROM \(quote)\(table.name)\(quote) LIMIT 50;")
@@ -292,13 +274,6 @@ private struct TableRow: View {
                 pb.setString(table.name, forType: .string)
             } label: {
                 Label("Copy Table Name", systemImage: "doc.on.doc")
-            }
-
-            Button {
-                vm.selectedTable = table
-                Task { await vm.refreshTables() }
-            } label: {
-                Label("Refresh", systemImage: "arrow.clockwise")
             }
         }
     }

@@ -35,7 +35,7 @@ struct QueryResultView: View {
 
             // -- Data Table --
             if !result.columns.isEmpty {
-                ResultDataTable(columns: result.columns, rows: result.rows)
+                ResultDataTable(columns: result.columns, rows: result.rows, baseSql: vm.activeQueryTab?.baseSql ?? "", rowLimit: vm.rowLimit)
                     .frame(maxHeight: .infinity)
             } else if result.rowsAffected > 0 {
                 affectedOnlyState
@@ -61,17 +61,6 @@ struct QueryResultView: View {
             Spacer()
 
             if !result.columns.isEmpty {
-                HStack(spacing: 2) {
-                    limitButton(50)
-                    limitButton(100)
-                    limitButton(200)
-                    limitButton(500)
-                    limitButton(1000)
-                    limitButton(0, label: "All")
-                }
-                .background(Color.accentColor.opacity(0.08))
-                .cornerRadius(6)
-
                 Divider()
                     .frame(height: 14)
 
@@ -110,7 +99,8 @@ struct QueryResultView: View {
             guard let tab = vm.activeQueryTab else { return }
             let base = tab.sqlInput.trimmingCharacters(in: .whitespacesAndNewlines)
             guard base.uppercased().hasPrefix("SELECT") else { return }
-            tab.sqlInput = value > 0 ? "\(base) LIMIT \(value)" : base
+            let limitSql = value > 0 ? "\(tab.baseSql) LIMIT \(value)" : tab.baseSql
+            tab.sqlInput = limitSql
             Task { await vm.executeQuery() }
         }
         .buttonStyle(.borderless)
@@ -183,7 +173,24 @@ struct QueryResultView: View {
             Label("\(result.columns.count) cols", systemImage: "rectangle.split.3x1")
             Text("·").foregroundStyle(.tertiary)
             Label("\(result.rows.count) rows", systemImage: "tablecells")
+
             Spacer()
+
+            Menu("Limit: \(vm.rowLimit == 0 ? "All" : "\(vm.rowLimit)")") {
+                limitButton(50)
+                limitButton(100)
+                limitButton(200)
+                limitButton(500)
+                limitButton(1000)
+                limitButton(0, label: "All")
+            }
+            .menuStyle(.borderlessButton)
+            .menuIndicator(.visible)
+            .fixedSize()
+
+            Divider()
+                .frame(height: 12)
+
             Label("\(result.executionTimeMs) ms", systemImage: "clock")
         }
         .font(.caption)
@@ -211,8 +218,15 @@ struct QueryResultView: View {
 private struct ResultDataTable: View {
     let columns: [ColumnInfo]
     let rows: [[CellValue]]
+    let baseSql: String
+    let rowLimit: Int
 
     @EnvironmentObject var vm: DatabaseViewModel
+    @State private var lazyRows: [[CellValue]] = []
+    @State private var lazyOffset: Int = 0
+    @State private var isLoadingMore = false
+    @State private var hasMore = true
+    private let batchSize = 200
     @State private var scrollPosition: CGPoint = .zero
     @State private var sortColumn: Int? = nil
     @State private var sortDescending: Bool = true
@@ -292,7 +306,7 @@ private struct ResultDataTable: View {
     var body: some View {
         GeometryReader { geo in
             let widths = columnWidths(availableWidth: geo.size.width)
-        let displayRows = sortedRows
+        let displayRows = sortColumn != nil ? sortedRows : lazyRows
             return VStack(spacing: 0) {
                 HStack {
                     if hasDirtyCells {
@@ -314,7 +328,7 @@ private struct ResultDataTable: View {
                 .background(Color.accentColor.opacity(0.04))
                 Divider()
                 ScrollView([.horizontal, .vertical]) {
-                    VStack(alignment: .leading, spacing: 0) {
+                    LazyVStack(alignment: .leading, spacing: 0) {
                         headerRow(widths: widths)
                         separatorRow
                         ForEach(Array(displayRows.enumerated()), id: \.offset) { i, row in
@@ -322,15 +336,31 @@ private struct ResultDataTable: View {
                             if i < displayRows.count - 1 {
                                 Divider().padding(.leading)
                             }
+                            if i >= displayRows.count - 5 && hasMore && !isLoadingMore && sortColumn == nil {
+                                Color.clear.onAppear { loadMore() }
+                            }
+                        }
+                        if isLoadingMore {
+                            HStack {
+                                ProgressView().scaleEffect(0.6)
+                                Text("Loading more...").font(.caption).foregroundColor(.secondary)
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 6)
                         }
                     }
                     .font(.system(.caption, design: .monospaced))
-                    .background(.clear)
-                    .frame(maxHeight: .infinity, alignment: .top)
+                    .frame(minWidth: geo.size.width, minHeight: geo.size.height, alignment: .topLeading)
                 }
                 .frame(maxHeight: .infinity)
             }
             .background(Color(nsColor: .controlBackgroundColor))
+        }
+        .onAppear {
+            lazyRows = rows
+            lazyOffset = rows.count
+            let maxLimit = rowLimit > 0 ? rowLimit : Int.max
+            hasMore = rows.count >= batchSize && lazyOffset < maxLimit
         }
     }
 
@@ -473,6 +503,29 @@ private struct ResultDataTable: View {
             let escaped = v.replacingOccurrences(of: "'", with: "''")
             return "'\(escaped)'"
         case .blob: return "X''"
+        }
+    }
+
+    // MARK: - Lazy Loading
+
+    private func loadMore() {
+        guard !baseSql.isEmpty else { return }
+        let maxLimit = rowLimit > 0 ? rowLimit : Int.max
+        guard lazyOffset < maxLimit else { hasMore = false; return }
+        isLoadingMore = true
+        let fetchCount = min(batchSize, maxLimit - lazyOffset)
+        Task {
+            let sql = "\(baseSql) LIMIT \(fetchCount) OFFSET \(lazyOffset)"
+            if let r = try? await vm.bridge.executeQuery(sql) {
+                Task { @MainActor in
+                    lazyRows.append(contentsOf: r.rows)
+                    lazyOffset += r.rows.count
+                    hasMore = r.rows.count >= batchSize && lazyOffset < maxLimit
+                    isLoadingMore = false
+                }
+            } else {
+                Task { @MainActor in isLoadingMore = false }
+            }
         }
     }
 
