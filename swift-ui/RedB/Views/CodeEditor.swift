@@ -194,6 +194,16 @@ struct CodeEditor: NSViewRepresentable {
                 result.append(f + "()")
             }
 
+            // SQL clause keywords
+            let clauses = ["WHERE", "ORDER BY", "GROUP BY", "HAVING", "LIMIT", "OFFSET",
+                           "JOIN", "LEFT JOIN", "RIGHT JOIN", "INNER JOIN", "OUTER JOIN",
+                           "ON", "AS", "AND", "OR", "IN", "NOT IN", "BETWEEN", "LIKE",
+                           "IS NULL", "IS NOT NULL", "UNION", "UNION ALL", "EXCEPT", "INTERSECT",
+                           "WITH", "RECURSIVE", "RETURNING", "FOR UPDATE", "FOR SHARE"]
+            for c in clauses where c.lowercased().hasPrefix(partial) {
+                result.append(c)
+            }
+
             // Table names (contextual)
             if isTableNameContext(in: textView.string, cursor: charRange.location),
                let suggester = parent.tableSuggestions {
