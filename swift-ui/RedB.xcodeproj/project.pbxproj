@@ -16,6 +16,7 @@
 		4BE3280680DF2E6864D811EE /* SavedQuery.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B651217C3D2CEC4E5DEC60F /* SavedQuery.swift */; };
 		5CCDB620265197D98919F2C9 /* QueryTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADEA3E74D6A8EB4125113AA5 /* QueryTab.swift */; };
 		76D78E54234A2EA033B94C23 /* TableBrowserView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D98F0AAB2D9614321B17F5BD /* TableBrowserView.swift */; };
+		79A0A0BCF8FCA95B4854C611 /* SQLContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED910F2235EA00A0E2F203CA /* SQLContext.swift */; };
 		B46DBF62646C69924DAF7F4B /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 07459A73144D87C033B5BE5C /* Assets.xcassets */; };
 		B66CF440813A1DB4EDB3FEDF /* SQLQueryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F32586087AFC9E147589B79 /* SQLQueryView.swift */; };
 		C56E6E5C23FD738CDFCFC4F9 /* SidebarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9BBEFF86D85D5DE768E035F7 /* SidebarView.swift */; };
@@ -44,6 +45,7 @@
 		C79C0158E67C408D575A2442 /* redb_coreFFI.modulemap */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.module-map"; path = redb_coreFFI.modulemap; sourceTree = "<group>"; };
 		D98F0AAB2D9614321B17F5BD /* TableBrowserView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TableBrowserView.swift; sourceTree = "<group>"; };
 		E6A939597A7BF78923E0C323 /* CodeEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CodeEditor.swift; sourceTree = "<group>"; };
+		ED910F2235EA00A0E2F203CA /* SQLContext.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SQLContext.swift; sourceTree = "<group>"; };
 		F8E0BD40496A3F0285ECC63A /* TableStructureView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TableStructureView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -77,6 +79,7 @@
 				33C585DBC93086FA6FE3DE9F /* QueryResultModel.swift */,
 				ADEA3E74D6A8EB4125113AA5 /* QueryTab.swift */,
 				1B651217C3D2CEC4E5DEC60F /* SavedQuery.swift */,
+				ED910F2235EA00A0E2F203CA /* SQLContext.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -219,6 +222,7 @@
 				5CCDB620265197D98919F2C9 /* QueryTab.swift in Sources */,
 				1AB7F6541433913D066680BA /* RedBApp.swift in Sources */,
 				E0EEDAE20E7B4BA8D0183A92 /* RustBridge.swift in Sources */,
+				79A0A0BCF8FCA95B4854C611 /* SQLContext.swift in Sources */,
 				B66CF440813A1DB4EDB3FEDF /* SQLQueryView.swift in Sources */,
 				4BE3280680DF2E6864D811EE /* SavedQuery.swift in Sources */,
 				C56E6E5C23FD738CDFCFC4F9 /* SidebarView.swift in Sources */,

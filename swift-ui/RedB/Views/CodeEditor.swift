@@ -1,85 +1,6 @@
 import SwiftUI
 import AppKit
 
-private let sqlKeywords: Set<String> = [
-    "SELECT", "FROM", "WHERE", "AND", "OR", "NOT", "IN", "IS", "NULL",
-    "INSERT", "INTO", "VALUES", "UPDATE", "SET", "DELETE", "CREATE",
-    "TABLE", "DROP", "ALTER", "ADD", "COLUMN", "INDEX", "PRIMARY",
-    "KEY", "FOREIGN", "REFERENCES", "CONSTRAINT", "DEFAULT", "UNIQUE",
-    "JOIN", "LEFT", "RIGHT", "INNER", "OUTER", "ON", "AS", "ORDER",
-    "BY", "GROUP", "HAVING", "LIMIT", "OFFSET", "UNION", "ALL", "DISTINCT",
-    "CASE", "WHEN", "THEN", "ELSE", "END", "EXISTS", "BETWEEN", "LIKE",
-    "COUNT", "SUM", "AVG", "MIN", "MAX", "CAST", "COALESCE", "NULLIF",
-    "TRUE", "FALSE", "IF", "REPLACE", "TRUNCATE", "DESCRIBE", "SHOW",
-    "USE", "DATABASE", "SCHEMA", "GRANT", "REVOKE", "COMMIT", "ROLLBACK",
-    "BEGIN", "TRANSACTION", "EXPLAIN", "ANALYZE", "WITH", "RECURSIVE",
-    "ASC", "DESC", "CROSS", "NATURAL", "USING", "ANY", "SOME",
-]
-
-private let pgsqlFunctions: Set<String> = [
-    "NOW", "CURRENT_DATE", "CURRENT_TIME", "CURRENT_TIMESTAMP",
-    "DATE_PART", "DATE_TRUNC", "EXTRACT", "AGE", "NOW",
-    "TO_CHAR", "TO_DATE", "TO_NUMBER", "TO_TIMESTAMP",
-    "MAKE_DATE", "MAKE_TIME", "MAKE_TIMESTAMP", "MAKE_INTERVAL",
-    "GREATEST", "LEAST", "COALESCE", "NULLIF",
-    "ARRAY_AGG", "ARRAY_APPEND", "ARRAY_CAT", "ARRAY_DIMS",
-    "ARRAY_FILL", "ARRAY_LENGTH", "ARRAY_LOWER", "ARRAY_POSITION",
-    "ARRAY_PREPEND", "ARRAY_REMOVE", "ARRAY_REPLACE", "ARRAY_TO_STRING",
-    "ARRAY_UPPER", "CARDINALITY", "STRING_AGG", "UNNEST",
-    "GENERATE_SERIES", "GENERATE_SUBSCRIPTS",
-    "CONCAT", "CONCAT_WS", "FORMAT", "INITCAP", "LEFT", "RIGHT",
-    "LENGTH", "LOWER", "LPAD", "LTRIM", "REGEXP_MATCH", "REGEXP_REPLACE",
-    "REGEXP_SPLIT_TO_ARRAY", "REGEXP_SPLIT_TO_TABLE", "REPEAT", "REPLACE",
-    "REVERSE", "RPAD", "RTRIM", "SPLIT_PART", "STRPOS", "SUBSTR", "SUBSTRING",
-    "TRANSLATE", "TRIM", "UPPER",
-    "ABS", "CEIL", "CEILING", "DIV", "EXP", "FLOOR", "LN", "LOG",
-    "MOD", "POWER", "RANDOM", "ROUND", "SETSEED", "SIGN", "SQRT",
-    "TRUNC", "WIDTH_BUCKET",
-    "COUNT", "SUM", "AVG", "MIN", "MAX", "STDDEV", "VARIANCE",
-    "ROW_NUMBER", "RANK", "DENSE_RANK", "NTILE", "LAG", "LEAD",
-    "FIRST_VALUE", "LAST_VALUE", "NTH_VALUE",
-    "CAST", "CONVERT", "BOOL_AND", "BOOL_OR", "EVERY",
-]
-
-private let mariadbFunctions: Set<String> = [
-    "NOW", "CURDATE", "CURTIME", "UTC_DATE", "UTC_TIME", "UTC_TIMESTAMP",
-    "DATE", "TIME", "YEAR", "MONTH", "DAY", "DAYNAME", "DAYOFMONTH",
-    "DAYOFWEEK", "DAYOFYEAR", "HOUR", "MINUTE", "SECOND", "MICROSECOND",
-    "DATE_ADD", "DATE_SUB", "DATEDIFF", "DATE_FORMAT", "STR_TO_DATE",
-    "UNIX_TIMESTAMP", "FROM_UNIXTIME", "TIMESTAMPDIFF", "TIMESTAMPADD",
-    "LAST_DAY", "MAKEDATE", "MAKETIME", "PERIOD_ADD", "PERIOD_DIFF",
-    "QUARTER", "SEC_TO_TIME", "TIME_TO_SEC", "TIMEDIFF", "TO_DAYS",
-    "CONCAT", "CONCAT_WS", "GROUP_CONCAT", "SUBSTRING", "SUBSTRING_INDEX",
-    "TRIM", "LTRIM", "RTRIM", "UPPER", "LOWER", "LENGTH", "CHAR_LENGTH",
-    "CHARACTER_LENGTH", "REPLACE", "LOCATE", "INSTR", "POSITION",
-    "LEFT", "RIGHT", "REPEAT", "REVERSE", "SPACE", "LPAD", "RPAD",
-    "INSERT", "ELT", "FIELD", "FIND_IN_SET", "FORMAT", "HEX", "UNHEX",
-    "IFNULL", "COALESCE", "NULLIF", "IF", "CASE",
-    "ABS", "CEIL", "CEILING", "FLOOR", "ROUND", "TRUNCATE", "MOD",
-    "POW", "POWER", "SQRT", "EXP", "LOG", "LOG10", "LOG2", "RAND",
-    "SIGN", "PI", "DEGREES", "RADIANS", "SIN", "COS", "TAN", "ACOS",
-    "ASIN", "ATAN", "ATAN2", "COT",
-    "COUNT", "SUM", "AVG", "MIN", "MAX", "GROUP_CONCAT", "STD", "STDDEV",
-    "VARIANCE", "VAR_POP", "VAR_SAMP", "BIT_AND", "BIT_OR", "BIT_XOR",
-    "ROW_NUMBER", "RANK", "DENSE_RANK", "NTILE",
-    "CAST", "CONVERT", "JSON_EXTRACT", "JSON_UNQUOTE", "JSON_SET",
-    "JSON_REPLACE", "JSON_REMOVE", "JSON_KEYS", "JSON_CONTAINS",
-]
-
-private let mySQLFunctions: Set<String> = [
-    "NOW", "CURDATE", "CURTIME", "DATE", "TIME", "YEAR", "MONTH", "DAY",
-    "HOUR", "MINUTE", "SECOND", "DATE_FORMAT", "STR_TO_DATE", "UNIX_TIMESTAMP",
-    "FROM_UNIXTIME", "TIMESTAMPDIFF", "TIMESTAMPADD", "CONCAT", "CONCAT_WS",
-    "GROUP_CONCAT", "SUBSTRING", "TRIM", "LTRIM", "RTRIM", "UPPER", "LOWER",
-    "LENGTH", "CHAR_LENGTH", "REPLACE", "LOCATE", "INSTR", "LEFT", "RIGHT",
-    "REPEAT", "REVERSE", "SPACE", "FORMAT", "IFNULL", "COALESCE", "NULLIF",
-    "IF", "CASE", "CAST", "CONVERT", "JSON_EXTRACT", "JSON_UNQUOTE",
-    "JSON_SET", "JSON_REPLACE", "JSON_REMOVE", "ROW_NUMBER", "RANK",
-    "DENSE_RANK", "LEAD", "LAG", "FIRST_VALUE", "LAST_VALUE",
-    "ABS", "CEIL", "FLOOR", "ROUND", "TRUNCATE", "MOD", "POW", "POWER",
-    "SQRT", "EXP", "LOG", "LOG10", "RAND", "SIGN",
-]
-
 // MARK: - SwiftUI Wrapper
 
 struct CodeEditor: NSViewRepresentable {
@@ -217,39 +138,19 @@ struct CodeEditor: NSViewRepresentable {
         }
 
         func textView(_ textView: NSTextView, completions words: [String], forPartialWordRange charRange: NSRange, indexOfSelectedItem index: UnsafeMutablePointer<Int>?) -> [String] {
-            let partial = (textView.string as NSString).substring(with: charRange).lowercased()
+            let context = analyzeSQLContext(textView.string, cursor: charRange.location)
+            let partial = (textView.string as NSString).substring(with: charRange)
 
-            var result: [String] = []
-
-            // Functions (combined from all DB types)
-            let allFunctions = mySQLFunctions.union(mariadbFunctions).union(pgsqlFunctions)
-            for f in allFunctions where f.lowercased().hasPrefix(partial) {
-                result.append(f + "()")
-            }
-
-            // SQL clause keywords
-            let clauses = ["WHERE", "ORDER BY", "GROUP BY", "HAVING", "LIMIT", "OFFSET",
-                           "JOIN", "LEFT JOIN", "RIGHT JOIN", "INNER JOIN", "OUTER JOIN",
-                           "ON", "AS", "AND", "OR", "IN", "NOT IN", "BETWEEN", "LIKE",
-                           "IS NULL", "IS NOT NULL", "UNION", "UNION ALL", "EXCEPT", "INTERSECT",
-                           "WITH", "RECURSIVE", "RETURNING", "FOR UPDATE", "FOR SHARE"]
-            for c in clauses where c.lowercased().hasPrefix(partial) {
-                result.append(c)
-            }
-
-            // Column names (after WHERE, ORDER BY, GROUP BY, etc.)
-            if isColumnContext(in: textView.string, cursor: charRange.location),
-               let suggester = parent.columnSuggestions {
-                let cols = suggester(String(partial))
-                result.append(contentsOf: cols)
-            }
-
-            // Table names (contextual)
-            if isTableNameContext(in: textView.string, cursor: charRange.location),
-               let suggester = parent.tableSuggestions {
-                let tables = suggester(String(partial))
-                result.append(contentsOf: tables)
-            }
+            let result = sqlSuggestions(
+                for: context,
+                partial: partial,
+                tableFetcher: { prefix in
+                    parent.tableSuggestions?(prefix) ?? []
+                },
+                columnFetcher: { prefix in
+                    parent.columnSuggestions?(prefix) ?? []
+                }
+            )
 
             return result.isEmpty ? words : result
         }
