@@ -502,10 +502,9 @@ final class DatabaseViewModel: ObservableObject {
     func quickView(table: TableInfo) async {
         let q = selectedConnection?.dbType == .mysql || selectedConnection?.dbType == .mariaDb ? "" : "\""
         let sql = "SELECT * FROM \(q)\(table.name)\(q) LIMIT \(rowLimit);"
-        // 先创建 tab，立即设为 loading 状态（不切换 detailContent）
         guard let tab = newQueryTab(sql: sql) else { return }
-        tab.queryLoadState = .loading
         tab.title = table.name
+        // quick view 查询几乎瞬时，不设 .loading 避免闪烁
         let result: QueryResult
         do {
             result = try await bridge.quickView(tableName: table.name, rowLimit: UInt32(rowLimit))

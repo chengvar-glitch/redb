@@ -104,12 +104,6 @@ struct SQLQueryView: View {
                 .fontWeight(isActive ? .semibold : .regular)
                 .lineLimit(1)
 
-            if tab.queryLoadState.isLoading {
-                ProgressView()
-                    .controlSize(.small)
-                    .scaleEffect(0.6)
-            }
-
             Button {
                 vm.closeQueryTab(tab)
             } label: {
