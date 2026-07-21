@@ -477,6 +477,7 @@ private struct ResultDataTable: View {
         .background(rowBackground(isSelected: isSelected, isHovered: isHovered, index: index))
         .onTapGesture {
             selectedRow = index
+            editingCell = nil
         }
         .onHover { hovering in
             hoveredRow = hovering ? index : nil
@@ -558,6 +559,7 @@ private struct ResultDataTable: View {
     private func beginEdit(row: Int, col: Int, value: CellValue) {
         guard sortColumn == nil else { return }
         editingCell = (row, col)
+        selectedRow = nil
         editText = displayCell(value)
         if editText == "NULL" { editText = "" }
     }
