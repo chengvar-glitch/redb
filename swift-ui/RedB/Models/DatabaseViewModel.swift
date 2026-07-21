@@ -458,9 +458,7 @@ final class DatabaseViewModel: ObservableObject {
             }
         }
 
-        // 过滤无意义的空结果（SET 等控制语句）: 无列、无行、0 影响行
-        let meaningful = results.filter { !$0.columns.isEmpty || $0.rowsAffected > 0 }
-        tab.queryLoadState = .success(meaningful.isEmpty ? results : meaningful)
+        tab.queryLoadState = .success(results)
 
         // Record table usage for auto-complete
         for stmt in statements {
