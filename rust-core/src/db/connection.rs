@@ -226,6 +226,14 @@ impl DatabaseManager {
 
     pub fn execute_query(&self, sql: &str) -> Result<QueryResult, DbError> {
         let start = Instant::now();
+
+        // 控制语句：不产生结果集，不获取 DB 锁直接返回
+        let trimmed = sql.trim();
+        let first_word = trimmed.split_whitespace().next().unwrap_or("").to_uppercase();
+        if matches!(first_word.as_str(), "SET" | "USE" | "BEGIN" | "COMMIT" | "ROLLBACK") {
+            return Ok(QueryResult::empty());
+        }
+
         let mut guard = self.conn.lock().unwrap();
         let conn = guard.as_mut().ok_or(DbError::NotConnected)?;
 

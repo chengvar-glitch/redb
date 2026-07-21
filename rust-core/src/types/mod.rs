@@ -62,6 +62,17 @@ pub struct QueryResult {
     pub execution_time_ms: u64,
 }
 
+impl QueryResult {
+    pub fn empty() -> Self {
+        Self {
+            columns: vec![],
+            rows: vec![],
+            rows_affected: 0,
+            execution_time_ms: 0,
+        }
+    }
+}
+
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, uniffi::Record)]
 pub struct TableInfo {
     pub name: String,
