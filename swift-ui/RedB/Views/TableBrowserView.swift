@@ -262,7 +262,7 @@ private struct TableRow: View {
     let table: TableInfo
 
     @EnvironmentObject var vm: DatabaseViewModel
-    @State private var lastClick: Date?
+    @State private var showRename = false
 
     private var quote: String {
         guard let db = vm.selectedConnection?.dbType else { return "\"" }
@@ -288,13 +288,7 @@ private struct TableRow: View {
         .padding(.vertical, 4)
         .contentShape(Rectangle())
         .onTapGesture {
-            let now = Date()
-            if let last = lastClick, now.timeIntervalSince(last) < 0.3 {
-                lastClick = nil
-                Task { await vm.quickView(table: table) }
-            } else {
-                lastClick = now
-            }
+            Task { await vm.quickView(table: table) }
         }
         .contextMenu {
             Button {
