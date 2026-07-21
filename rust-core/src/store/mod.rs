@@ -266,6 +266,7 @@ mod tests {
             username: Some("user".into()),
             password: Some("pass".into()),
             max_connections: 5,
+            log_path: None,
         }
     }
 

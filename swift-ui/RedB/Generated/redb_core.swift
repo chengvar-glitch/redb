@@ -1241,10 +1241,11 @@ public struct DatabaseConfig {
     public var username: String?
     public var password: String?
     public var maxConnections: UInt32
+    public var logPath: String?
 
     // Default memberwise initializers are never public by default, so we
     // declare one manually.
-    public init(dbType: DatabaseType, url: String, host: String?, port: UInt32?, database: String?, username: String?, password: String?, maxConnections: UInt32) {
+    public init(dbType: DatabaseType, url: String, host: String?, port: UInt32?, database: String?, username: String?, password: String?, maxConnections: UInt32, logPath: String?) {
         self.dbType = dbType
         self.url = url
         self.host = host
@@ -1253,6 +1254,7 @@ public struct DatabaseConfig {
         self.username = username
         self.password = password
         self.maxConnections = maxConnections
+        self.logPath = logPath
     }
 }
 
@@ -1284,6 +1286,9 @@ extension DatabaseConfig: Equatable, Hashable {
         if lhs.maxConnections != rhs.maxConnections {
             return false
         }
+        if lhs.logPath != rhs.logPath {
+            return false
+        }
         return true
     }
 
@@ -1296,6 +1301,7 @@ extension DatabaseConfig: Equatable, Hashable {
         hasher.combine(username)
         hasher.combine(password)
         hasher.combine(maxConnections)
+        hasher.combine(logPath)
     }
 }
 
@@ -1314,7 +1320,8 @@ public struct FfiConverterTypeDatabaseConfig: FfiConverterRustBuffer {
                 database: FfiConverterOptionString.read(from: &buf), 
                 username: FfiConverterOptionString.read(from: &buf), 
                 password: FfiConverterOptionString.read(from: &buf), 
-                maxConnections: FfiConverterUInt32.read(from: &buf)
+                maxConnections: FfiConverterUInt32.read(from: &buf), 
+                logPath: FfiConverterOptionString.read(from: &buf)
         )
     }
 
@@ -1327,6 +1334,7 @@ public struct FfiConverterTypeDatabaseConfig: FfiConverterRustBuffer {
         FfiConverterOptionString.write(value.username, into: &buf)
         FfiConverterOptionString.write(value.password, into: &buf)
         FfiConverterUInt32.write(value.maxConnections, into: &buf)
+        FfiConverterOptionString.write(value.logPath, into: &buf)
     }
 }
 

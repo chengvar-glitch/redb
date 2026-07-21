@@ -79,7 +79,8 @@ struct ConnectionProfile: Identifiable, Hashable {
             database: database.isEmpty ? nil : database,
             username: username.isEmpty ? nil : username,
             password: password.isEmpty ? nil : password,
-            maxConnections: 10
+            maxConnections: 10,
+            logPath: nil
         )
     }
 
@@ -304,6 +305,7 @@ final class DatabaseViewModel: ObservableObject {
         defer { isConnecting = false }
 
         do {
+            let logPath = appSupportDir() + "/sql_log/" + profile.id + ".log"
             try await bridge.connect(
                 dbType: profile.dbType.toFFI,
                 url: profile.url,
@@ -311,7 +313,8 @@ final class DatabaseViewModel: ObservableObject {
                 port: profile.port,
                 database: profile.database.isEmpty ? nil : profile.database,
                 username: profile.username.isEmpty ? nil : profile.username,
-                password: profile.password.isEmpty ? nil : profile.password
+                password: profile.password.isEmpty ? nil : profile.password,
+                logPath: logPath
             )
             selectedConnection = profile
             updateLastConnected(profile)

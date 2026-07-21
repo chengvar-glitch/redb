@@ -30,7 +30,8 @@ final class RustBridge: ObservableObject {
         port: UInt32? = nil,
         database: String? = nil,
         username: String? = nil,
-        password: String? = nil
+        password: String? = nil,
+        logPath: String? = nil
     ) async throws {
         let config = DatabaseConfig(
             dbType: dbType,
@@ -40,7 +41,8 @@ final class RustBridge: ObservableObject {
             database: database,
             username: username,
             password: password,
-            maxConnections: 10
+            maxConnections: 10,
+            logPath: logPath
         )
         let mgr = DatabaseManager(config: config)
 
@@ -79,7 +81,8 @@ final class RustBridge: ObservableObject {
             database: database,
             username: username,
             password: password,
-            maxConnections: 1
+            maxConnections: 1,
+            logPath: nil
         )
         let mgr = DatabaseManager(config: config)
         let queue = DispatchQueue(label: "com.redb.ffi.test", qos: .default)

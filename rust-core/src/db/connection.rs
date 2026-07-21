@@ -1,5 +1,7 @@
 use std::sync::Mutex;
 use std::time::Instant;
+use std::fs::{self, OpenOptions};
+use std::io::Write;
 
 use crate::types::*;
 
@@ -297,7 +299,59 @@ impl DatabaseManager {
             #[cfg(feature = "db2")]
             DbConnection::Db2 { conn } => Self::execute_query_db2(conn, sql, start),
         }
+        .inspect(|_| self.log_query(sql, start))
     }
+
+    fn log_query(&self, sql: &str, start: Instant) {
+        if let Some(ref log_path) = self.config.log_path {
+            let elapsed = start.elapsed().as_millis();
+
+            // Build ISO-8601 timestamp without chrono
+            let now = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or_default();
+            let secs = now.as_secs();
+            // Simple UTC date-time (no timezone)
+            let _days = secs / 86400;
+            let time_secs = secs % 86400;
+            let ts = format!("{}T{:02}:{:02}:{:02}Z",
+                date_from_timestamp(secs),
+                time_secs / 3600, (time_secs % 3600) / 60, time_secs % 60);
+
+            if let Some(parent) = std::path::Path::new(log_path).parent() {
+                let _ = fs::create_dir_all(parent);
+            }
+            let line = format!("{} | {} | {}ms\n", ts, sql.replace('\n', " "), elapsed);
+            if let Ok(mut file) = OpenOptions::new().create(true).append(true).open(log_path) {
+                let _ = write!(file, "{}", line);
+            }
+        }
+    }
+}
+
+// Helper to convert days since epoch to ISO date string
+fn date_from_timestamp(secs: u64) -> String {
+    let days = secs / 86400;
+    let mut y = 1970i64;
+    let mut remaining = days as i64;
+    loop {
+        let days_in_year = if is_leap(y) { 366 } else { 365 };
+        if remaining < days_in_year { break; }
+        remaining -= days_in_year;
+        y += 1;
+    }
+    let m = [31, if is_leap(y) { 29 } else { 28 }, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+    let mut month = 1;
+    for &days_in_month in &m {
+        if remaining < days_in_month { break; }
+        remaining -= days_in_month;
+        month += 1;
+    }
+    format!("{:04}-{:02}-{:02}", y, month, remaining + 1)
+}
+
+fn is_leap(year: i64) -> bool {
+    (year % 4 == 0 && year % 100 != 0) || year % 400 == 0
 }
 
 // ===========================================================================

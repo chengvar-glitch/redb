@@ -91,6 +91,7 @@ pub struct DatabaseConfig {
     pub username: Option<String>,
     pub password: Option<String>,
     pub max_connections: u32,
+    pub log_path: Option<String>,
 }
 
 impl DatabaseType {
@@ -123,6 +124,7 @@ impl DatabaseConfig {
             username: None,
             password: None,
             max_connections: 10,
+            log_path: None,
         }
     }
 
