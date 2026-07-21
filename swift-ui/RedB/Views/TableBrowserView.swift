@@ -264,6 +264,7 @@ private struct TableRow: View {
     @EnvironmentObject var vm: DatabaseViewModel
     @State private var showRename = false
     @State private var isHovered = false
+    @State private var showDeleteAlert = false
 
     private var quote: String {
         guard let db = vm.selectedConnection?.dbType else { return "\"" }
@@ -328,6 +329,25 @@ private struct TableRow: View {
             } label: {
                 Label("Copy Table Name", systemImage: "doc.on.doc")
             }
+
+            Divider()
+
+            Button(role: .destructive) {
+                showDeleteAlert = true
+            } label: {
+                Label("Delete Table", systemImage: "trash")
+            }
+        }
+        .alert("Delete Table", isPresented: $showDeleteAlert) {
+            Button("Cancel", role: .cancel) { }
+            Button("Delete", role: .destructive) {
+                Task {
+                    _ = try? await vm.bridge.executeQuery("DROP TABLE \(quote)\(table.name)\(quote);")
+                    await vm.refreshTables()
+                }
+            }
+        } message: {
+            Text("Are you sure you want to delete \"\(table.name)\"? This cannot be undone.")
         }
     }
 }
