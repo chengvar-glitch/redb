@@ -223,7 +223,7 @@ private struct QueryTabContentView: View {
             Button("") {
                 vm.newQueryTab()
             }
-            .keyboardShortcut("w", modifiers: [.command])
+            .keyboardShortcut("t", modifiers: [.command])
             .hidden()
         )
         .alert("Save Query", isPresented: $showSaveDialog) {
