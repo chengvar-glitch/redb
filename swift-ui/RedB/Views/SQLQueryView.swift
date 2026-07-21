@@ -261,9 +261,9 @@ private struct QueryTabContentView: View {
     @State private var selectedIndex = 0
 
     private var editorPane: some View {
-        CodeEditor(text: $tab.sqlInput, onSuggest: { prefix in
+        CodeEditor(text: $tab.sqlInput, onSuggest: { prefix, cursor in
             suggestPrefix = prefix
-            suggestions = computeSuggestions(prefix)
+            suggestions = computeSuggestions(prefix, cursor: cursor)
             selectedIndex = 0
             return suggestions
         }, onTab: {
@@ -367,21 +367,47 @@ private struct QueryTabContentView: View {
         }
     }
 
-    private func computeSuggestions(_ prefix: String) -> [String] {
+    private func computeSuggestions(_ prefix: String, cursor: Int) -> [String] {
         guard prefix.count >= 1 else { return [] }
+
+        let context = analyzeSqlContext(sql: tab.sqlInput, cursor: UInt64(cursor))
         let lower = prefix.lowercased()
-        let allFunctions = allSQLFunctions
-        let funcs = allFunctions.filter { $0.lowercased().hasPrefix(lower) }.map { "\($0)()" }
 
-        var tables = vm.tableSuggestions(matching: prefix)
-        for t in tables {
-            let alias = vm.aliasForTable(t)
-            if alias != t {
-                tables.append("\(t) \(alias)")
+        switch context.completionType {
+        case .statement:
+            let keywords = ["SELECT", "INSERT", "UPDATE", "DELETE", "CREATE", "DROP", "ALTER",
+                            "TRUNCATE", "WITH", "EXPLAIN", "SHOW", "USE"]
+            return keywords.filter { $0.lowercased().hasPrefix(lower) }
+
+        case .tableName:
+            var tables = vm.tableSuggestions(matching: prefix)
+            for t in tables {
+                let alias = vm.aliasForTable(t)
+                if alias != t { tables.append("\(t) \(alias)") }
             }
-        }
+            return tables
 
-        return Array((funcs + tables).prefix(20))
+        case .columnName:
+            let cols = vm.columnSuggestions(matching: prefix)
+            let funcs = allSQLFunctions.filter { $0.lowercased().hasPrefix(lower) }.map { "\($0)()" }
+            return Array((cols + funcs).prefix(20))
+
+        case .function:
+            return allSQLFunctions.filter { $0.lowercased().hasPrefix(lower) }.map { "\($0)()" }
+
+        case .keyword:
+            let clauses = ["WHERE", "ORDER BY", "GROUP BY", "HAVING", "LIMIT", "OFFSET",
+                           "JOIN", "LEFT JOIN", "RIGHT JOIN", "INNER JOIN",
+                           "ON", "AND", "OR", "IN", "NOT IN", "BETWEEN", "LIKE",
+                           "IS NULL", "IS NOT NULL", "UNION", "UNION ALL"]
+            return clauses.filter { $0.lowercased().hasPrefix(lower) }
+
+        case .value:
+            return []
+
+        case .alias:
+            return []
+        }
     }
 
     private func acceptSuggestion(_ item: String) {

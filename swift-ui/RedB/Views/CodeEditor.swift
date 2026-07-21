@@ -6,7 +6,7 @@ import AppKit
 struct CodeEditor: NSViewRepresentable {
     @Binding var text: String
     var font: NSFont = .monospacedSystemFont(ofSize: 12, weight: .regular)
-    var onSuggest: ((String) -> [String])?
+    var onSuggest: ((_ partial: String, _ cursor: Int) -> [String])?
     var onTab: (() -> Void)?
     var onArrowUp: (() -> Void)?
     var onArrowDown: (() -> Void)?
@@ -62,9 +62,10 @@ struct CodeEditor: NSViewRepresentable {
             parent.text = tv.string
             parent.highlight(tv)
             if !isDelete, let onSuggest = parent.onSuggest {
-                let partial = currentWord(in: tv.string, cursor: tv.selectedRange().location)
+                let cursor = tv.selectedRange().location
+                let partial = currentWord(in: tv.string, cursor: cursor)
                 if let word = partial, word.count >= 1 {
-                    _ = onSuggest(word)
+                    _ = onSuggest(word, cursor)
                 }
             }
         }
