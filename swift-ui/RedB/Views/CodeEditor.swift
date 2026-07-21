@@ -166,37 +166,5 @@ struct CodeEditor: NSViewRepresentable {
 // MARK: - SQL Formatter
 
 func formatSQL(_ sql: String) -> String {
-    let keywords = ["SELECT", "FROM", "WHERE", "AND", "OR", "ORDER BY", "GROUP BY",
-                    "HAVING", "LIMIT", "OFFSET", "INSERT INTO", "VALUES",
-                    "UPDATE", "SET", "DELETE FROM", "CREATE TABLE", "ALTER TABLE",
-                    "DROP TABLE", "JOIN", "LEFT JOIN", "RIGHT JOIN", "INNER JOIN",
-                    "OUTER JOIN", "ON", "UNION", "UNION ALL", "EXISTS", "NOT EXISTS",
-                    "CASE", "WHEN", "THEN", "ELSE", "END", "BEGIN", "COMMIT",
-                    "ROLLBACK", "WITH", "AS"]
-
-    var result = sql
-    for kw in ["SELECT", "FROM", "WHERE", "ORDER BY", "GROUP BY", "HAVING",
-               "LIMIT", "OFFSET", "INSERT INTO", "UPDATE", "SET", "DELETE FROM",
-               "CREATE TABLE", "ALTER TABLE", "DROP TABLE", "UNION", "UNION ALL",
-               "JOIN", "LEFT JOIN", "RIGHT JOIN", "INNER JOIN", "OUTER JOIN",
-               "ON", "WITH"] {
-        let pattern = "(?i)\\b\(kw)\\b"
-        if let regex = try? NSRegularExpression(pattern: pattern, options: []) {
-            let nsrange = NSRange(result.startIndex..., in: result)
-            let matches = regex.matches(in: result, range: nsrange).reversed()
-            for m in matches {
-                guard let range = Range(m.range, in: result) else { continue }
-                let word = result[range]
-                let isFirst = range.lowerBound == result.startIndex
-                if !isFirst {
-                    let before = result[result.index(before: range.lowerBound)]
-                    if before != "\n" && before != " " {
-                        result.insert(contentsOf: "\n", at: range.lowerBound)
-                    }
-                }
-            }
-        }
-    }
-
-    return result
+    formatSql(sql: sql)
 }

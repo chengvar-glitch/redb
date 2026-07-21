@@ -222,6 +222,48 @@ impl DatabaseManager {
         }
     }
 
+    // -- current_database --------------------------------------------------
+
+    pub fn current_database(&self) -> Result<String, DbError> {
+        let sql = match self.config.db_type {
+            DatabaseType::Postgres => "SELECT current_database()",
+            DatabaseType::MySql | DatabaseType::MariaDB => "SELECT DATABASE()",
+            DatabaseType::SqlServer => "SELECT DB_NAME()",
+            _ => return Ok("main".to_string()),
+        };
+        let result = self.execute_query(sql)?;
+        let val = result.rows.first()
+            .and_then(|r| r.first())
+            .map(|cv| format!("{}", cv))
+            .unwrap_or_default();
+        Ok(val)
+    }
+
+    // -- list_databases ----------------------------------------------------
+
+    pub fn list_databases(&self) -> Result<Vec<String>, DbError> {
+        let sql = match self.config.db_type {
+            DatabaseType::Postgres =>
+                "SELECT datname FROM pg_database WHERE datistemplate = false ORDER BY datname",
+            DatabaseType::MySql | DatabaseType::MariaDB => "SHOW DATABASES",
+            DatabaseType::SqlServer =>
+                "SELECT name FROM sys.databases ORDER BY name",
+            _ => return Ok(vec!["main".to_string()]),
+        };
+        let result = self.execute_query(sql)?;
+        Ok(result.rows.iter().filter_map(|r| {
+            r.first().map(|cv| format!("{}", cv))
+        }).collect())
+    }
+
+    // -- quick_view --------------------------------------------------------
+
+    pub fn quick_view(&self, table_name: &str, row_limit: u32) -> Result<QueryResult, DbError> {
+        let q = self.config.db_type.quote_char();
+        let sql = format!("SELECT * FROM {q}{table_name}{q} LIMIT {row_limit}");
+        self.execute_query(&sql)
+    }
+
     // -- execute_query ------------------------------------------------------
 
     pub fn execute_query(&self, sql: &str) -> Result<QueryResult, DbError> {

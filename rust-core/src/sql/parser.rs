@@ -2,6 +2,8 @@ use sqlparser::ast::*;
 use sqlparser::dialect::GenericDialect;
 use sqlparser::parser::Parser;
 
+use crate::types::{SqlCompletionType, SqlContext};
+
 #[derive(Debug)]
 pub enum QueryType {
     Select,
@@ -57,4 +59,289 @@ pub fn classify_sql(sql: &str) -> Result<ParsedStatement, String> {
         query_type,
         tables_used,
     })
+}
+
+// ---------------------------------------------------------------------------
+// Split SQL into statements by semicolons
+// ---------------------------------------------------------------------------
+
+pub fn split_sql(sql: &str) -> Vec<String> {
+    sql.split(';')
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
+        .collect()
+}
+
+// ---------------------------------------------------------------------------
+// Extract table names from SQL
+// ---------------------------------------------------------------------------
+
+pub fn extract_table_names(sql: &str) -> Vec<String> {
+    let dialect = GenericDialect;
+    if let Ok(stmts) = Parser::parse_sql(&dialect, sql) {
+        let mut tables = Vec::new();
+        for stmt in stmts {
+            match &stmt {
+                Statement::Query(query) => tables.extend(extract_tables_from_query(query)),
+                Statement::Insert(insert) => tables.push(insert.table_name.to_string()),
+                Statement::Update { table, .. } => tables.push(table.to_string()),
+                Statement::CreateTable(ct) => tables.push(ct.name.to_string()),
+                _ => {}
+            }
+        }
+        tables
+    } else {
+        // Fallback: simple keyword-based extraction
+        let upper = sql.to_uppercase();
+        let keywords = ["FROM", "JOIN", "INTO", "UPDATE", "TABLE", "INTO"];
+        let parts: Vec<&str> = upper.split_whitespace().collect();
+        let mut tables = Vec::new();
+        for (i, word) in parts.iter().enumerate() {
+            if keywords.contains(word) {
+                if let Some(next) = parts.get(i + 1) {
+                    let name = next.trim_matches(|c: char| c == '"' || c == '\'' || c == '`' || c == ';');
+                    if !name.is_empty() && !keywords.contains(&name) {
+                        tables.push(name.to_string());
+                    }
+                }
+            }
+        }
+        tables
+    }
+}
+
+// ---------------------------------------------------------------------------
+// SQL formatter — add newlines before major keywords
+// ---------------------------------------------------------------------------
+
+pub fn format_sql(sql: &str) -> String {
+    let keywords = [
+        "SELECT", "FROM", "WHERE", "ORDER BY", "GROUP BY", "HAVING",
+        "LIMIT", "OFFSET", "INSERT INTO", "UPDATE", "SET", "DELETE FROM",
+        "CREATE TABLE", "ALTER TABLE", "DROP TABLE", "UNION", "UNION ALL",
+        "JOIN", "LEFT JOIN", "RIGHT JOIN", "INNER JOIN", "OUTER JOIN",
+        "ON", "WITH",
+    ];
+
+    let mut result = sql.to_string();
+    for kw in keywords {
+        let upper = result.to_uppercase();
+        let mut search_start = 0;
+        loop {
+            let kw_upper = kw.to_uppercase();
+            if let Some(pos) = upper[search_start..].find(&kw_upper) {
+                let actual_pos = search_start + pos;
+                // Check it's a word boundary (prev char is space/newline or start)
+                if actual_pos > 0 {
+                    let prev = result.as_bytes()[actual_pos - 1];
+                    if prev != b' ' && prev != b'\n' {
+                        search_start = actual_pos + 1;
+                        continue;
+                    }
+                }
+                // Check next char is word boundary too
+                let end = actual_pos + kw.len();
+                if end < result.len() {
+                    let next = result.as_bytes()[end];
+                    if next.is_ascii_alphanumeric() || next == b'_' {
+                        search_start = actual_pos + 1;
+                        continue;
+                    }
+                }
+                // Insert newline before the keyword (replace preceding space)
+                if actual_pos > 0 {
+                    let before = result.as_bytes()[actual_pos - 1];
+                    if before != b'\n' {
+                        result.insert(actual_pos, '\n');
+                        if before == b' ' {
+                            result.remove(actual_pos + 1);
+                        }
+                        search_start = actual_pos + kw.len() + 1;
+                        continue;
+                    }
+                }
+                search_start = actual_pos + kw.len();
+            } else {
+                break;
+            }
+        }
+    }
+
+    result
+}
+
+// ---------------------------------------------------------------------------
+// SQL context analysis for auto-complete
+// ---------------------------------------------------------------------------
+
+fn tokenize_sql(text: &str) -> Vec<String> {
+    let mut tokens = Vec::new();
+    let mut current = String::new();
+    let mut in_string = false;
+    let mut string_char = '\'';
+
+    for ch in text.chars() {
+        if in_string {
+            current.push(ch);
+            if ch == string_char {
+                in_string = false;
+            }
+            continue;
+        }
+        if ch == '\'' || ch == '"' || ch == '`' {
+            if !current.is_empty() {
+                tokens.push(current.clone());
+            }
+            current = String::new();
+            current.push(ch);
+            in_string = true;
+            string_char = ch;
+            continue;
+        }
+        if ch.is_whitespace() || ch == ',' || ch == '(' || ch == ')' || ch == ';' || ch == '\n' {
+            if !current.is_empty() {
+                tokens.push(current.clone());
+                current.clear();
+            }
+            if ch == '\n' {
+                tokens.push("\n".to_string());
+            }
+            continue;
+        }
+        current.push(ch);
+    }
+    if !current.is_empty() {
+        tokens.push(current);
+    }
+    tokens
+}
+
+fn extract_current_word(text: &str) -> Option<String> {
+    let trimmed = text.trim_end();
+    let last_space = trimmed.rfind(|c: char| c == ' ' || c == '\n');
+    match last_space {
+        Some(pos) => {
+            let word = trimmed[pos + 1..].trim();
+            if word.is_empty() { None } else { Some(word.to_string()) }
+        }
+        None => {
+            if trimmed.is_empty() { None } else { Some(trimmed.to_string()) }
+        }
+    }
+}
+
+fn has_last_word(text: &str, keyword: &str) -> bool {
+    let upper = text.to_uppercase();
+    let kw = keyword.to_uppercase();
+    if let Some(pos) = upper.rfind(&kw) {
+        let after = upper[pos + kw.len()..].trim();
+        after.is_empty() || !after.contains(' ')
+    } else {
+        false
+    }
+}
+
+const TABLE_EXPECTERS: &[&str] = &[
+    "FROM", "JOIN", "INNER JOIN", "LEFT JOIN", "RIGHT JOIN", "OUTER JOIN",
+    "INTO", "TABLE", "UPDATE",
+];
+
+const COLUMN_EXPECTERS: &[&str] = &[
+    "SELECT", "WHERE", "ORDER BY", "GROUP BY", "HAVING",
+    "ON", "SET", "AND", "OR",
+];
+
+const STATEMENT_STARTERS: &[&str] = &[
+    "SELECT", "INSERT", "UPDATE", "DELETE", "CREATE", "DROP", "ALTER",
+    "TRUNCATE", "WITH", "EXPLAIN", "DESCRIBE", "SHOW", "USE", "CALL",
+];
+
+const VALUE_OPERATORS: &[&str] = &["IN", "=", "!=", "<>", "<", ">", "<=", ">=", "LIKE"];
+
+pub fn analyze_sql_context(sql: &str, cursor: usize) -> SqlContext {
+    let len = sql.len();
+    let pos = cursor.min(len);
+    let text_before = &sql[..pos];
+    let tokens = tokenize_sql(text_before);
+    let partial = extract_current_word(text_before).unwrap_or_default();
+
+    if tokens.is_empty() {
+        return SqlContext {
+            completion_type: SqlCompletionType::Statement,
+            partial,
+        };
+    }
+
+    let last = tokens.last().map(|s| s.as_str()).unwrap_or("");
+    let upper_last = last.to_uppercase();
+
+    for kw in TABLE_EXPECTERS {
+        if upper_last == *kw || has_last_word(text_before, kw) {
+            return SqlContext { completion_type: SqlCompletionType::TableName, partial };
+        }
+    }
+
+    for kw in COLUMN_EXPECTERS {
+        if upper_last == *kw || has_last_word(text_before, kw) {
+            return SqlContext { completion_type: SqlCompletionType::ColumnName, partial };
+        }
+    }
+
+    for op in VALUE_OPERATORS {
+        if upper_last == *op || has_last_word(text_before, op) {
+            return SqlContext { completion_type: SqlCompletionType::Value, partial };
+        }
+    }
+
+    if upper_last.ends_with('(') {
+        return SqlContext { completion_type: SqlCompletionType::Function, partial };
+    }
+
+    if tokens.len() <= 1 || tokens.get(tokens.len().wrapping_sub(2)).map(|s| s.as_str()) == Some("\n") {
+        return SqlContext { completion_type: SqlCompletionType::Statement, partial };
+    }
+
+    if STATEMENT_STARTERS.contains(&upper_last.as_str()) {
+        return SqlContext { completion_type: SqlCompletionType::ColumnName, partial };
+    }
+
+    SqlContext {
+        completion_type: SqlCompletionType::ColumnName,
+        partial,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_split_sql() {
+        let r = split_sql("SELECT 1; SELECT 2");
+        assert_eq!(r.len(), 2);
+    }
+
+    #[test]
+    fn test_extract_table_names() {
+        let r = extract_table_names("SELECT * FROM users JOIN orders ON users.id = orders.user_id");
+        assert!(r.contains(&"users".to_string()));
+    }
+
+    #[test]
+    fn test_format_sql() {
+        let r = format_sql("SELECT * FROM users WHERE id = 1");
+        assert!(r.contains('\n'));
+    }
+
+    #[test]
+    fn test_analyze_sql_context_table() {
+        let ctx = analyze_sql_context("SELECT * FROM ", 14);
+        assert_eq!(ctx.completion_type, SqlCompletionType::TableName);
+    }
+
+    #[test]
+    fn test_sql_context_statement_start() {
+        let ctx = analyze_sql_context("", 0);
+        assert_eq!(ctx.completion_type, SqlCompletionType::Statement);
+    }
 }

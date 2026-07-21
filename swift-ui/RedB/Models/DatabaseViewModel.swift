@@ -13,17 +13,6 @@ enum DbType: String, CaseIterable, Identifiable {
 
     var id: String { rawValue }
 
-    var defaultPort: UInt32 {
-        switch self {
-        case .sqlite: return 0
-        case .postgres: return 5432
-        case .mysql: return 3306
-        case .mariaDb: return 3306
-        case .sqlServer: return 1433
-        case .db2: return 50000
-        }
-    }
-
     var toFFI: DatabaseType {
         switch self {
         case .sqlite: return .sqlite
@@ -177,7 +166,7 @@ final class DatabaseViewModel: ObservableObject {
     func columnSuggestions(matching prefix: String) -> [String] {
         guard case .success(let tables) = tablesLoadState else { return [] }
         let sql = activeQueryTab?.sqlInput ?? ""
-        let tableNames = extractTableNames(from: sql)
+        let tableNames = extractTableNames(sql: sql)
         guard let firstName = tableNames.first,
               let table = tables.first(where: { $0.name == firstName })
         else { return [] }
@@ -213,15 +202,25 @@ final class DatabaseViewModel: ObservableObject {
         }
     }
 
+    // MARK: - Table Usage
+
+    private func loadTableUsage() {
+        guard let qs = queryStore,
+              let entries = try? qs.getTableUsage()
+        else { return }
+        tableUsage = Dictionary(uniqueKeysWithValues: entries.map { ($0.tableName, Int($0.count)) })
+    }
+
     func recordTableUsage(_ table: String) {
         tableUsage[table, default: 0] += 1
         try? queryStore?.recordTableUsage(tableName: table)
     }
 
-    // -- Saved Queries --
+    // MARK: - Saved Queries
+
     @Published var savedQueries: [SavedQuery] = []
 
-    // -- Quick View 加载状态 --
+    // MARK: - Quick View 加载状态 --
     @Published var quickViewLoading = false
 
     // -- Tab 限制 --
@@ -436,7 +435,7 @@ final class DatabaseViewModel: ObservableObject {
         }
         tab.baseSql = clean
 
-        let statements = splitSQL(trimmed)
+        let statements = splitSql(sql: trimmed)
         guard !statements.isEmpty else { return }
 
         tab.queryLoadState = .loading
@@ -462,47 +461,10 @@ final class DatabaseViewModel: ObservableObject {
 
         // Record table usage for auto-complete
         for stmt in statements {
-            for table in extractTableNames(from: stmt) {
+            for table in extractTableNames(sql: stmt) {
                 recordTableUsage(table)
             }
         }
-    }
-
-    private func extractTableNames(from sql: String) -> Set<String> {
-        let upper = sql.uppercased()
-        let keywords: Set<String> = ["FROM", "JOIN", "INTO", "UPDATE", "TABLE", "INTO"]
-        var names = Set<String>()
-        let parts = upper.components(separatedBy: .whitespacesAndNewlines)
-        for (i, word) in parts.enumerated() {
-            if keywords.contains(word) {
-                let nextIdx = i + 1
-                if nextIdx < parts.count {
-                    var name = parts[nextIdx].trimmingCharacters(in: CharacterSet(charactersIn: "\"'`;"))
-                    if !name.isEmpty && !keywords.contains(name) {
-                        // Skip if looks like a subquery or function
-                        if !name.hasPrefix("(") && !name.hasPrefix("SELECT") {
-                            names.insert(name)
-                        }
-                    }
-                }
-            }
-        }
-        return names
-    }
-
-    private func splitSQL(_ sql: String) -> [String] {
-        sql.components(separatedBy: ";")
-            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-            .filter { !$0.isEmpty }
-    }
-
-    // MARK: - Table Usage
-
-    private func loadTableUsage() {
-        guard let qs = queryStore,
-              let entries = try? qs.getTableUsage()
-        else { return }
-        tableUsage = Dictionary(uniqueKeysWithValues: entries.map { ($0.tableName, Int($0.count)) })
     }
 
     // MARK: - Saved Queries
@@ -538,13 +500,12 @@ final class DatabaseViewModel: ObservableObject {
     // MARK: - Quick View
 
     func quickView(table: TableInfo) async {
-        let q = selectedConnection?.dbType == .mysql || selectedConnection?.dbType == .mariaDb ? "" : "\""
-        let sql = "SELECT * FROM \(q)\(table.name)\(q) LIMIT \(rowLimit);"
+        let sql = "SELECT * FROM \(table.name) LIMIT \(rowLimit);" // placeholder, core handles quoting
         quickViewLoading = true
         defer { quickViewLoading = false }
         let result: QueryResult
         do {
-            result = try await bridge.executeQuery(sql)
+            result = try await bridge.quickView(tableName: table.name, rowLimit: UInt32(rowLimit))
         } catch {
             result = QueryResult(columns: [], rows: [], rowsAffected: 0, executionTimeMs: 0)
         }
@@ -554,41 +515,8 @@ final class DatabaseViewModel: ObservableObject {
     }
 
     func refreshDatabases(for profile: ConnectionProfile) async {
-        // Get current database
-        let curSql: String
-        switch profile.dbType {
-        case .postgres: curSql = "SELECT current_database()"
-        case .mysql, .mariaDb: curSql = "SELECT DATABASE()"
-        case .sqlServer: curSql = "SELECT DB_NAME()"
-        default: curSql = ""
-        }
-        if !curSql.isEmpty, let r = try? await bridge.executeQuery(curSql) {
-            if case .text(let name) = r.rows.first?.first { currentDatabase = name }
-            if case .text(let name) = r.rows.first?.last { currentDatabase = name }
-        }
-
-        // Get database list
-        let sql: String
-        switch profile.dbType {
-        case .postgres:
-            sql = "SELECT datname FROM pg_database WHERE datistemplate = false ORDER BY datname"
-        case .mysql, .mariaDb:
-            sql = "SHOW DATABASES"
-        case .sqlServer:
-            sql = "SELECT name FROM sys.databases ORDER BY name"
-        default:
-            databases = []
-            return
-        }
-        guard let result = try? await bridge.executeQuery(sql) else {
-            databases = []
-            return
-        }
-        databases = result.rows.compactMap { row in
-            if case .text(let name) = row.first { return name }
-            if case .text(let name) = row.last { return name }
-            return nil
-        }
+        currentDatabase = (try? await bridge.currentDatabase()) ?? ""
+        databases = (try? await bridge.listDatabases()) ?? []
     }
 
     func isConnected(_ profile: ConnectionProfile) -> Bool {

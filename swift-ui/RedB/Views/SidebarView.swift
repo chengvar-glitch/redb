@@ -229,7 +229,7 @@ private struct AddConnectionSheet: View {
     }
 
     private var resolvedPort: UInt32 {
-        UInt32(port) ?? selectedType.defaultPort
+        UInt32(port) ?? databaseDefaultPort(dbType: selectedType.toFFI)
     }
 
     private var isValid: Bool {
@@ -364,7 +364,7 @@ private struct AddConnectionSheet: View {
                             .font(.body.monospaced())
                     }
                     formField("Port") {
-                        TextField("\(selectedType.defaultPort)", text: $port)
+                        TextField("\(databaseDefaultPort(dbType: selectedType.toFFI))", text: $port)
                             .textFieldStyle(.roundedBorder)
                             .frame(width: 70)
                             .font(.body.monospaced())
@@ -539,7 +539,7 @@ private struct EditConnectionSheet: View {
     }
 
     private var resolvedPort: UInt32 {
-        UInt32(port) ?? selectedType.defaultPort
+        UInt32(port) ?? databaseDefaultPort(dbType: selectedType.toFFI)
     }
 
     private var isValid: Bool {
@@ -659,7 +659,7 @@ private struct EditConnectionSheet: View {
                                         .font(.body.monospaced())
                                 }
                                 formField("Port") {
-                                    TextField("\(selectedType.defaultPort)", text: $port)
+                                    TextField("\(databaseDefaultPort(dbType: selectedType.toFFI))", text: $port)
                                         .textFieldStyle(.roundedBorder)
                                         .frame(width: 70)
                                         .font(.body.monospaced())

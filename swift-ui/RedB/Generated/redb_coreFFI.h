@@ -311,6 +311,11 @@ void*_Nonnull uniffi_redb_core_fn_constructor_databasemanager_new(RustBuffer con
 void uniffi_redb_core_fn_method_databasemanager_connect(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_REDB_CORE_FN_METHOD_DATABASEMANAGER_CURRENT_DATABASE
+#define UNIFFI_FFIDEF_UNIFFI_REDB_CORE_FN_METHOD_DATABASEMANAGER_CURRENT_DATABASE
+RustBuffer uniffi_redb_core_fn_method_databasemanager_current_database(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_REDB_CORE_FN_METHOD_DATABASEMANAGER_DISCONNECT
 #define UNIFFI_FFIDEF_UNIFFI_REDB_CORE_FN_METHOD_DATABASEMANAGER_DISCONNECT
 void uniffi_redb_core_fn_method_databasemanager_disconnect(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
@@ -321,9 +326,19 @@ void uniffi_redb_core_fn_method_databasemanager_disconnect(void*_Nonnull ptr, Ru
 RustBuffer uniffi_redb_core_fn_method_databasemanager_execute_query(void*_Nonnull ptr, RustBuffer sql, RustCallStatus *_Nonnull out_status
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_REDB_CORE_FN_METHOD_DATABASEMANAGER_LIST_DATABASES
+#define UNIFFI_FFIDEF_UNIFFI_REDB_CORE_FN_METHOD_DATABASEMANAGER_LIST_DATABASES
+RustBuffer uniffi_redb_core_fn_method_databasemanager_list_databases(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_REDB_CORE_FN_METHOD_DATABASEMANAGER_LIST_TABLES
 #define UNIFFI_FFIDEF_UNIFFI_REDB_CORE_FN_METHOD_DATABASEMANAGER_LIST_TABLES
 RustBuffer uniffi_redb_core_fn_method_databasemanager_list_tables(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_REDB_CORE_FN_METHOD_DATABASEMANAGER_QUICK_VIEW
+#define UNIFFI_FFIDEF_UNIFFI_REDB_CORE_FN_METHOD_DATABASEMANAGER_QUICK_VIEW
+RustBuffer uniffi_redb_core_fn_method_databasemanager_quick_view(void*_Nonnull ptr, RustBuffer table_name, uint32_t row_limit, RustCallStatus *_Nonnull out_status
 );
 #endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_REDB_CORE_FN_METHOD_DATABASEMANAGER_STATUS
@@ -376,9 +391,34 @@ void uniffi_redb_core_fn_method_querystore_reset_table_usage(void*_Nonnull ptr, 
 void uniffi_redb_core_fn_method_querystore_save_query(void*_Nonnull ptr, RustBuffer id, RustBuffer name, RustBuffer sql, int64_t created_at, RustCallStatus *_Nonnull out_status
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_REDB_CORE_FN_FUNC_ANALYZE_SQL_CONTEXT
+#define UNIFFI_FFIDEF_UNIFFI_REDB_CORE_FN_FUNC_ANALYZE_SQL_CONTEXT
+RustBuffer uniffi_redb_core_fn_func_analyze_sql_context(RustBuffer sql, uint64_t cursor, RustCallStatus *_Nonnull out_status
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_REDB_CORE_FN_FUNC_CREATE_DATABASE_MANAGER
 #define UNIFFI_FFIDEF_UNIFFI_REDB_CORE_FN_FUNC_CREATE_DATABASE_MANAGER
 void*_Nonnull uniffi_redb_core_fn_func_create_database_manager(RustBuffer config, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_REDB_CORE_FN_FUNC_DATABASE_DEFAULT_PORT
+#define UNIFFI_FFIDEF_UNIFFI_REDB_CORE_FN_FUNC_DATABASE_DEFAULT_PORT
+uint32_t uniffi_redb_core_fn_func_database_default_port(RustBuffer db_type, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_REDB_CORE_FN_FUNC_EXTRACT_TABLE_NAMES
+#define UNIFFI_FFIDEF_UNIFFI_REDB_CORE_FN_FUNC_EXTRACT_TABLE_NAMES
+RustBuffer uniffi_redb_core_fn_func_extract_table_names(RustBuffer sql, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_REDB_CORE_FN_FUNC_FORMAT_SQL
+#define UNIFFI_FFIDEF_UNIFFI_REDB_CORE_FN_FUNC_FORMAT_SQL
+RustBuffer uniffi_redb_core_fn_func_format_sql(RustBuffer sql, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_REDB_CORE_FN_FUNC_SPLIT_SQL
+#define UNIFFI_FFIDEF_UNIFFI_REDB_CORE_FN_FUNC_SPLIT_SQL
+RustBuffer uniffi_redb_core_fn_func_split_sql(RustBuffer sql, RustCallStatus *_Nonnull out_status
 );
 #endif
 #ifndef UNIFFI_FFIDEF_FFI_REDB_CORE_RUSTBUFFER_ALLOC
@@ -661,9 +701,39 @@ void ffi_redb_core_rust_future_free_void(uint64_t handle
 void ffi_redb_core_rust_future_complete_void(uint64_t handle, RustCallStatus *_Nonnull out_status
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_REDB_CORE_CHECKSUM_FUNC_ANALYZE_SQL_CONTEXT
+#define UNIFFI_FFIDEF_UNIFFI_REDB_CORE_CHECKSUM_FUNC_ANALYZE_SQL_CONTEXT
+uint16_t uniffi_redb_core_checksum_func_analyze_sql_context(void
+    
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_REDB_CORE_CHECKSUM_FUNC_CREATE_DATABASE_MANAGER
 #define UNIFFI_FFIDEF_UNIFFI_REDB_CORE_CHECKSUM_FUNC_CREATE_DATABASE_MANAGER
 uint16_t uniffi_redb_core_checksum_func_create_database_manager(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_REDB_CORE_CHECKSUM_FUNC_DATABASE_DEFAULT_PORT
+#define UNIFFI_FFIDEF_UNIFFI_REDB_CORE_CHECKSUM_FUNC_DATABASE_DEFAULT_PORT
+uint16_t uniffi_redb_core_checksum_func_database_default_port(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_REDB_CORE_CHECKSUM_FUNC_EXTRACT_TABLE_NAMES
+#define UNIFFI_FFIDEF_UNIFFI_REDB_CORE_CHECKSUM_FUNC_EXTRACT_TABLE_NAMES
+uint16_t uniffi_redb_core_checksum_func_extract_table_names(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_REDB_CORE_CHECKSUM_FUNC_FORMAT_SQL
+#define UNIFFI_FFIDEF_UNIFFI_REDB_CORE_CHECKSUM_FUNC_FORMAT_SQL
+uint16_t uniffi_redb_core_checksum_func_format_sql(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_REDB_CORE_CHECKSUM_FUNC_SPLIT_SQL
+#define UNIFFI_FFIDEF_UNIFFI_REDB_CORE_CHECKSUM_FUNC_SPLIT_SQL
+uint16_t uniffi_redb_core_checksum_func_split_sql(void
     
 );
 #endif
@@ -703,6 +773,12 @@ uint16_t uniffi_redb_core_checksum_method_databasemanager_connect(void
     
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_REDB_CORE_CHECKSUM_METHOD_DATABASEMANAGER_CURRENT_DATABASE
+#define UNIFFI_FFIDEF_UNIFFI_REDB_CORE_CHECKSUM_METHOD_DATABASEMANAGER_CURRENT_DATABASE
+uint16_t uniffi_redb_core_checksum_method_databasemanager_current_database(void
+    
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_REDB_CORE_CHECKSUM_METHOD_DATABASEMANAGER_DISCONNECT
 #define UNIFFI_FFIDEF_UNIFFI_REDB_CORE_CHECKSUM_METHOD_DATABASEMANAGER_DISCONNECT
 uint16_t uniffi_redb_core_checksum_method_databasemanager_disconnect(void
@@ -715,9 +791,21 @@ uint16_t uniffi_redb_core_checksum_method_databasemanager_execute_query(void
     
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_REDB_CORE_CHECKSUM_METHOD_DATABASEMANAGER_LIST_DATABASES
+#define UNIFFI_FFIDEF_UNIFFI_REDB_CORE_CHECKSUM_METHOD_DATABASEMANAGER_LIST_DATABASES
+uint16_t uniffi_redb_core_checksum_method_databasemanager_list_databases(void
+    
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_REDB_CORE_CHECKSUM_METHOD_DATABASEMANAGER_LIST_TABLES
 #define UNIFFI_FFIDEF_UNIFFI_REDB_CORE_CHECKSUM_METHOD_DATABASEMANAGER_LIST_TABLES
 uint16_t uniffi_redb_core_checksum_method_databasemanager_list_tables(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_REDB_CORE_CHECKSUM_METHOD_DATABASEMANAGER_QUICK_VIEW
+#define UNIFFI_FFIDEF_UNIFFI_REDB_CORE_CHECKSUM_METHOD_DATABASEMANAGER_QUICK_VIEW
+uint16_t uniffi_redb_core_checksum_method_databasemanager_quick_view(void
     
 );
 #endif

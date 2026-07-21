@@ -93,6 +93,25 @@ pub struct DatabaseConfig {
     pub max_connections: u32,
 }
 
+impl DatabaseType {
+    pub fn default_port(&self) -> u32 {
+        match self {
+            DatabaseType::Sqlite => 0,
+            DatabaseType::Postgres => 5432,
+            DatabaseType::MySql | DatabaseType::MariaDB => 3306,
+            DatabaseType::SqlServer => 1433,
+            DatabaseType::Db2 => 50000,
+        }
+    }
+
+    pub fn quote_char(&self) -> &str {
+        match self {
+            DatabaseType::MySql | DatabaseType::MariaDB => "`",
+            _ => "\"",
+        }
+    }
+}
+
 impl DatabaseConfig {
     pub fn new(db_type: DatabaseType, url: impl Into<String>) -> Self {
         Self {
@@ -159,7 +178,7 @@ pub struct TableUsageEntry {
 // Error
 // ---------------------------------------------------------------------------
 
-#[derive(Debug, thiserror::Error, uniffi::Error)]
+#[derive(Debug, Clone, thiserror::Error, uniffi::Error)]
 pub enum DbError {
     #[error("Connection failed: {message}")]
     ConnectionError { message: String },
@@ -167,4 +186,25 @@ pub enum DbError {
     QueryError { message: String },
     #[error("Not connected")]
     NotConnected,
+}
+
+// ---------------------------------------------------------------------------
+// Auto-complete types
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Clone, PartialEq, uniffi::Enum)]
+pub enum SqlCompletionType {
+    Statement,
+    Keyword,
+    TableName,
+    ColumnName,
+    Function,
+    Value,
+    Alias,
+}
+
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct SqlContext {
+    pub completion_type: SqlCompletionType,
+    pub partial: String,
 }

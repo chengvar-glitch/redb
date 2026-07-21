@@ -779,11 +779,17 @@ public protocol DatabaseManagerProtocol : AnyObject {
     
     func connect() throws 
     
+    func currentDatabase() throws  -> String
+    
     func disconnect() throws 
     
     func executeQuery(sql: String) throws  -> QueryResult
     
+    func listDatabases() throws  -> [String]
+    
     func listTables() throws  -> [TableInfo]
+    
+    func quickView(tableName: String, rowLimit: UInt32) throws  -> QueryResult
     
     func status()  -> ConnStatus
     
@@ -857,6 +863,13 @@ open func connect()throws  {try rustCallWithError(FfiConverterTypeDbError.lift) 
 }
 }
     
+open func currentDatabase()throws  -> String {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeDbError.lift) {
+    uniffi_redb_core_fn_method_databasemanager_current_database(self.uniffiClonePointer(),$0
+    )
+})
+}
+    
 open func disconnect()throws  {try rustCallWithError(FfiConverterTypeDbError.lift) {
     uniffi_redb_core_fn_method_databasemanager_disconnect(self.uniffiClonePointer(),$0
     )
@@ -871,9 +884,25 @@ open func executeQuery(sql: String)throws  -> QueryResult {
 })
 }
     
+open func listDatabases()throws  -> [String] {
+    return try  FfiConverterSequenceString.lift(try rustCallWithError(FfiConverterTypeDbError.lift) {
+    uniffi_redb_core_fn_method_databasemanager_list_databases(self.uniffiClonePointer(),$0
+    )
+})
+}
+    
 open func listTables()throws  -> [TableInfo] {
     return try  FfiConverterSequenceTypeTableInfo.lift(try rustCallWithError(FfiConverterTypeDbError.lift) {
     uniffi_redb_core_fn_method_databasemanager_list_tables(self.uniffiClonePointer(),$0
+    )
+})
+}
+    
+open func quickView(tableName: String, rowLimit: UInt32)throws  -> QueryResult {
+    return try  FfiConverterTypeQueryResult.lift(try rustCallWithError(FfiConverterTypeDbError.lift) {
+    uniffi_redb_core_fn_method_databasemanager_quick_view(self.uniffiClonePointer(),
+        FfiConverterString.lower(tableName),
+        FfiConverterUInt32.lower(rowLimit),$0
     )
 })
 }
@@ -1566,6 +1595,72 @@ public func FfiConverterTypeSavedQuery_lower(_ value: SavedQuery) -> RustBuffer 
 }
 
 
+public struct SqlContext {
+    public var completionType: SqlCompletionType
+    public var partial: String
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(completionType: SqlCompletionType, partial: String) {
+        self.completionType = completionType
+        self.partial = partial
+    }
+}
+
+
+
+extension SqlContext: Equatable, Hashable {
+    public static func ==(lhs: SqlContext, rhs: SqlContext) -> Bool {
+        if lhs.completionType != rhs.completionType {
+            return false
+        }
+        if lhs.partial != rhs.partial {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(completionType)
+        hasher.combine(partial)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeSqlContext: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SqlContext {
+        return
+            try SqlContext(
+                completionType: FfiConverterTypeSqlCompletionType.read(from: &buf), 
+                partial: FfiConverterString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: SqlContext, into buf: inout [UInt8]) {
+        FfiConverterTypeSqlCompletionType.write(value.completionType, into: &buf)
+        FfiConverterString.write(value.partial, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSqlContext_lift(_ buf: RustBuffer) throws -> SqlContext {
+    return try FfiConverterTypeSqlContext.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSqlContext_lower(_ value: SqlContext) -> RustBuffer {
+    return FfiConverterTypeSqlContext.lower(value)
+}
+
+
 public struct TableInfo {
     public var name: String
     public var schema: String
@@ -2050,6 +2145,105 @@ extension DbError: Foundation.LocalizedError {
     }
 }
 
+// Note that we don't yet support `indirect` for enums.
+// See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
+
+public enum SqlCompletionType {
+    
+    case statement
+    case keyword
+    case tableName
+    case columnName
+    case function
+    case value
+    case alias
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeSqlCompletionType: FfiConverterRustBuffer {
+    typealias SwiftType = SqlCompletionType
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SqlCompletionType {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+        
+        case 1: return .statement
+        
+        case 2: return .keyword
+        
+        case 3: return .tableName
+        
+        case 4: return .columnName
+        
+        case 5: return .function
+        
+        case 6: return .value
+        
+        case 7: return .alias
+        
+        default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: SqlCompletionType, into buf: inout [UInt8]) {
+        switch value {
+        
+        
+        case .statement:
+            writeInt(&buf, Int32(1))
+        
+        
+        case .keyword:
+            writeInt(&buf, Int32(2))
+        
+        
+        case .tableName:
+            writeInt(&buf, Int32(3))
+        
+        
+        case .columnName:
+            writeInt(&buf, Int32(4))
+        
+        
+        case .function:
+            writeInt(&buf, Int32(5))
+        
+        
+        case .value:
+            writeInt(&buf, Int32(6))
+        
+        
+        case .alias:
+            writeInt(&buf, Int32(7))
+        
+        }
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSqlCompletionType_lift(_ buf: RustBuffer) throws -> SqlCompletionType {
+    return try FfiConverterTypeSqlCompletionType.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSqlCompletionType_lower(_ value: SqlCompletionType) -> RustBuffer {
+    return FfiConverterTypeSqlCompletionType.lower(value)
+}
+
+
+
+extension SqlCompletionType: Equatable, Hashable {}
+
+
+
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
@@ -2167,6 +2361,31 @@ fileprivate struct FfiConverterOptionSequenceTypeTableInfo: FfiConverterRustBuff
         case 1: return try FfiConverterSequenceTypeTableInfo.read(from: &buf)
         default: throw UniffiInternalError.unexpectedOptionalTag
         }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceString: FfiConverterRustBuffer {
+    typealias SwiftType = [String]
+
+    public static func write(_ value: [String], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterString.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [String] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [String]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterString.read(from: &buf))
+        }
+        return seq
     }
 }
 
@@ -2344,10 +2563,46 @@ fileprivate struct FfiConverterSequenceSequenceTypeCellValue: FfiConverterRustBu
         return seq
     }
 }
+public func analyzeSqlContext(sql: String, cursor: UInt64) -> SqlContext {
+    return try!  FfiConverterTypeSqlContext.lift(try! rustCall() {
+    uniffi_redb_core_fn_func_analyze_sql_context(
+        FfiConverterString.lower(sql),
+        FfiConverterUInt64.lower(cursor),$0
+    )
+})
+}
 public func createDatabaseManager(config: DatabaseConfig) -> DatabaseManager {
     return try!  FfiConverterTypeDatabaseManager.lift(try! rustCall() {
     uniffi_redb_core_fn_func_create_database_manager(
         FfiConverterTypeDatabaseConfig.lower(config),$0
+    )
+})
+}
+public func databaseDefaultPort(dbType: DatabaseType) -> UInt32 {
+    return try!  FfiConverterUInt32.lift(try! rustCall() {
+    uniffi_redb_core_fn_func_database_default_port(
+        FfiConverterTypeDatabaseType.lower(dbType),$0
+    )
+})
+}
+public func extractTableNames(sql: String) -> [String] {
+    return try!  FfiConverterSequenceString.lift(try! rustCall() {
+    uniffi_redb_core_fn_func_extract_table_names(
+        FfiConverterString.lower(sql),$0
+    )
+})
+}
+public func formatSql(sql: String) -> String {
+    return try!  FfiConverterString.lift(try! rustCall() {
+    uniffi_redb_core_fn_func_format_sql(
+        FfiConverterString.lower(sql),$0
+    )
+})
+}
+public func splitSql(sql: String) -> [String] {
+    return try!  FfiConverterSequenceString.lift(try! rustCall() {
+    uniffi_redb_core_fn_func_split_sql(
+        FfiConverterString.lower(sql),$0
     )
 })
 }
@@ -2367,7 +2622,22 @@ private var initializationResult: InitializationResult = {
     if bindings_contract_version != scaffolding_contract_version {
         return InitializationResult.contractVersionMismatch
     }
+    if (uniffi_redb_core_checksum_func_analyze_sql_context() != 6154) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_redb_core_checksum_func_create_database_manager() != 16579) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_redb_core_checksum_func_database_default_port() != 64428) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_redb_core_checksum_func_extract_table_names() != 30609) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_redb_core_checksum_func_format_sql() != 32478) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_redb_core_checksum_func_split_sql() != 37766) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_redb_core_checksum_method_connectionstore_delete() != 35367) {
@@ -2388,13 +2658,22 @@ private var initializationResult: InitializationResult = {
     if (uniffi_redb_core_checksum_method_databasemanager_connect() != 54311) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_redb_core_checksum_method_databasemanager_current_database() != 23213) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_redb_core_checksum_method_databasemanager_disconnect() != 9018) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_redb_core_checksum_method_databasemanager_execute_query() != 51544) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_redb_core_checksum_method_databasemanager_list_databases() != 16759) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_redb_core_checksum_method_databasemanager_list_tables() != 24835) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_redb_core_checksum_method_databasemanager_quick_view() != 42330) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_redb_core_checksum_method_databasemanager_status() != 44177) {

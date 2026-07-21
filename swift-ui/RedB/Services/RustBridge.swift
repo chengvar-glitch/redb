@@ -144,4 +144,50 @@ final class RustBridge: ObservableObject {
             }
         }
     }
+
+    // MARK: - Database Metadata
+
+    func currentDatabase() async throws -> String {
+        guard let mgr = manager else { throw BridgeError.notConnected }
+        return try await withCheckedThrowingContinuation { continuation in
+            ffiQueue.async {
+                do {
+                    let db = try mgr.currentDatabase()
+                    continuation.resume(returning: db)
+                } catch {
+                    continuation.resume(throwing: error)
+                }
+            }
+        }
+    }
+
+    func listDatabases() async throws -> [String] {
+        guard let mgr = manager else { throw BridgeError.notConnected }
+        return try await withCheckedThrowingContinuation { continuation in
+            ffiQueue.async {
+                do {
+                    let dbs = try mgr.listDatabases()
+                    continuation.resume(returning: dbs)
+                } catch {
+                    continuation.resume(throwing: error)
+                }
+            }
+        }
+    }
+
+    // MARK: - Quick View
+
+    func quickView(tableName: String, rowLimit: UInt32 = 200) async throws -> QueryResult {
+        guard let mgr = manager else { throw BridgeError.notConnected }
+        return try await withCheckedThrowingContinuation { continuation in
+            ffiQueue.async {
+                do {
+                    let result = try mgr.quickView(tableName: tableName, rowLimit: rowLimit)
+                    continuation.resume(returning: result)
+                } catch {
+                    continuation.resume(throwing: error)
+                }
+            }
+        }
+    }
 }
