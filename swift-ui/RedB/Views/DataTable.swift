@@ -129,8 +129,8 @@ struct DataTable: NSViewRepresentable {
             tableView.deselectAll(nil)
         }
 
-        tableView.reloadData()
         context.coordinator.parent = self
+        tableView.reloadData()
     }
 }
 
