@@ -248,16 +248,11 @@ private struct ResultDataTable: View {
     // -- Editing state --
     @State private var editingCell: (row: Int, col: Int)? = nil
     @State private var editText: String = ""
-    @State private var dirtyCells: [Int: [Int: CellValue]] = [:]
 
     // -- Column resize --
     @State private var customColumnWidths: [Int: CGFloat] = [:]
     private let minColWidth: CGFloat = 80
     private let maxColWidth: CGFloat = 400
-
-    private var hasDirtyCells: Bool {
-        !dirtyCells.isEmpty
-    }
 
     private var sortedRows: [[CellValue]] {
         guard let col = sortColumn else { return rows }
@@ -339,9 +334,6 @@ private struct ResultDataTable: View {
             let widths = columnWidths(availableWidth: geo.size.width)
         let displayRows = sortColumn != nil ? sortedRows : lazyRows
             return VStack(spacing: 0) {
-                // Edit bar
-                editBar
-
                 // Data grid
                 ScrollView([.horizontal, .vertical]) {
                     LazyVStack(alignment: .leading, spacing: 0) {
@@ -375,29 +367,6 @@ private struct ResultDataTable: View {
         .onChange(of: rows.count) { _ in resetWidthsCache() }
         .onChange(of: sortColumn) { _ in cachedSortedRows = nil }
         .onChange(of: sortDescending) { _ in cachedSortedRows = nil }
-    }
-
-    // MARK: Edit Bar
-
-    @ViewBuilder
-    private var editBar: some View {
-        if hasDirtyCells {
-            HStack {
-                Text("\(dirtyCellsCount) cell(s) modified")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                Spacer()
-                Button("Cancel") { cancelEdits() }
-                    .controlSize(.small)
-                Button("Save") { saveEdits() }
-                    .controlSize(.small)
-                    .buttonStyle(.borderedProminent)
-            }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 6)
-            .background(Color.accentColor.opacity(0.04))
-            Divider()
-        }
     }
 
     // MARK: Data Rows
@@ -531,8 +500,6 @@ private struct ResultDataTable: View {
     // MARK: Data Row
 
     private func dataRow(_ row: [CellValue], index: Int, widths: [CGFloat]) -> some View {
-        let hasDirty = dirtyCells[index] != nil && !dirtyCells[index]!.isEmpty
-
         return HStack(spacing: 0) {
             ForEach(Array(row.enumerated()), id: \.offset) { i, cell in
                 if editingCell?.row == index && editingCell?.col == i {
@@ -543,7 +510,7 @@ private struct ResultDataTable: View {
                         .padding(.horizontal, 10)
                         .background(Color.accentColor.opacity(0.15))
                         .onSubmit {
-                            commitEdit(row: index, col: i)
+                            commitAndSave(row: index, col: i)
                         }
                 } else {
                     Text(displayCell(cell))
@@ -552,12 +519,13 @@ private struct ResultDataTable: View {
                         .truncationMode(.tail)
                         .frame(width: widths[i], height: 22, alignment: cellAlignment(cell))
                         .padding(.horizontal, 10)
-                        .background(
-                            hasDirty && dirtyCells[index]?[i] != nil
-                                ? Color.orange.opacity(0.08)
-                                : Color.clear
-                        )
-                        .onTapGesture(count: 2) {
+                        .background(Color.clear)
+                        .onTapGesture {
+                            // Click cell: save previous edit, select row, enter edit
+                            if let prev = editingCell, !(prev.row == index && prev.col == i) {
+                                commitAndSave(row: prev.row, col: prev.col)
+                            }
+                            selectedRow = index
                             beginEdit(row: index, col: i, value: cell)
                         }
                 }
@@ -656,24 +624,46 @@ private struct ResultDataTable: View {
 
     // MARK: - Cell Editing
 
-    private var dirtyCellsCount: Int {
-        dirtyCells.values.reduce(0) { $0 + $1.count }
-    }
-
     private func beginEdit(row: Int, col: Int, value: CellValue) {
         guard sortColumn == nil else { return }
         editingCell = (row, col)
-        selectedRow = nil
+        selectedRow = row
         editText = displayCell(value)
         if editText == "NULL" { editText = "" }
     }
 
-    private func commitEdit(row: Int, col: Int) {
-        let newVal = cellValueFromString(editText)
-        if dirtyCells[row] == nil { dirtyCells[row] = [:] }
-        dirtyCells[row]?[col] = newVal
+    /// Commit a single cell edit: build UPDATE SQL silently, execute it, refresh results.
+    private func commitAndSave(row: Int, col: Int) {
+        guard let tbl = tableName, row < lazyRows.count, col < columns.count else {
+            editingCell = nil; editText = ""
+            return
+        }
         editingCell = nil
+        let newVal = cellValueFromString(editText)
+        let originalRow = lazyRows[row]
+        let oldVal = originalRow[col]
         editText = ""
+
+        // Skip if value unchanged
+        let oldStr = displayCell(oldVal)
+        let newStr = displayCell(newVal)
+        guard newStr != oldStr else { return }
+
+        let q = quote
+        let setClause = "\(q)\(columns[col].name)\(q) = \(sqlEscape(newVal))"
+        let whereClause = zip(columns, originalRow).map { (c, v) -> String in
+            "\(q)\(c.name)\(q) = \(sqlEscape(v))"
+        }.joined(separator: " AND ")
+        let sql = "UPDATE \(q)\(tbl)\(q) SET \(setClause) WHERE \(whereClause);"
+
+        // Silent execute — no tab.sqlInput, user doesn't see this SQL
+        Task {
+            _ = try? await vm.bridge.executeQuery(sql)
+            if let originalSql = vm.activeQueryTab?.baseSql, !originalSql.isEmpty {
+                vm.activeQueryTab?.sqlInput = originalSql
+            }
+            await vm.executeQuery()
+        }
     }
 
     private func cellValueFromString(_ s: String) -> CellValue {
@@ -685,45 +675,8 @@ private struct ResultDataTable: View {
     }
 
     private func cancelEdits() {
-        dirtyCells = [:]
         editingCell = nil
         editText = ""
-    }
-
-    private func saveEdits() {
-        guard let tbl = tableName else { return }
-        let pkCols = columns.enumerated().filter { $0.element.isPrimaryKey }.map { $0.offset }
-        let q = quote
-
-        for (rowIdx, cols) in dirtyCells {
-            guard rowIdx < rows.count else { continue }
-            let originalRow = rows[rowIdx]
-
-            // Build SET clause
-            let sets = cols.map { (colIdx, newVal) -> String in
-                "\(q)\(columns[colIdx].name)\(q) = \(sqlEscape(newVal))"
-            }.joined(separator: ", ")
-
-            // Build WHERE clause using PK columns (or all columns if no PK)
-            let conditions: String
-            if !pkCols.isEmpty {
-                conditions = pkCols.map { i in
-                    let val = cols[i] ?? originalRow[i]
-                    return "\(q)\(columns[i].name)\(q) = \(sqlEscape(val))"
-                }.joined(separator: " AND ")
-            } else {
-                conditions = columns.enumerated().map { (i, col) in
-                    let val = cols[i] ?? originalRow[i]
-                    return "\(q)\(col.name)\(q) = \(sqlEscape(val))"
-                }.joined(separator: " AND ")
-            }
-
-            let sql = "UPDATE \(q)\(tbl)\(q) SET \(sets) WHERE \(conditions);"
-            vm.activeQueryTab?.sqlInput = sql
-            Task { await vm.executeQuery() }
-        }
-
-        dirtyCells = [:]
     }
 
     private func displayCell(_ cv: CellValue) -> String {
@@ -810,26 +763,6 @@ private struct ResultDataTable: View {
             return true
         default:
             return false
-        }
-    }
-
-    private enum MoveDirection { case up, down, left, right }
-
-    private func commitAndMove(direction: MoveDirection) {
-        guard let cell = editingCell else { return }
-        commitEdit(row: cell.row, col: cell.col)
-        switch direction {
-        case .down where cell.row < lazyRows.count - 1:
-            editingCell = (cell.row + 1, cell.col)
-        case .right where cell.col < columns.count - 1:
-            editingCell = (cell.row, cell.col + 1)
-        case .left where cell.col > 0:
-            editingCell = (cell.row, cell.col - 1)
-        default:
-            editingCell = nil
-        }
-        if editingCell != nil {
-            editText = displayCell(lazyRows[editingCell!.row][editingCell!.col])
         }
     }
 
