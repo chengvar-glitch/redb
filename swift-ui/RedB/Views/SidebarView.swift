@@ -109,17 +109,6 @@ private struct ConnectionRow: View {
             }
 
             Spacer(minLength: 4)
-
-            if vm.bridge.connectionStatus == .connected
-                && vm.selectedConnection?.id == profile.id {
-                Button("Disconnect") {
-                    Task { await vm.disconnect() }
-                }
-                .buttonStyle(.borderless)
-                .controlSize(.small)
-                .foregroundColor(.secondary)
-                .transition(.opacity.combined(with: .scale))
-            }
         }
         .padding(.vertical, 4)
         .animation(.easeInOut(duration: 0.2), value: vm.bridge.connectionStatus)
