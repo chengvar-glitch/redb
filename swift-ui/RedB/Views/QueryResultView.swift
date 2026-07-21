@@ -417,6 +417,7 @@ private struct ResultDataTable: View {
                 // Data cells
                 dataRow(row, index: i, widths: widths)
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
             .background(rowBackground(isSelected: selectedRow == i, isHovered: hoveredRow == i, index: i))
             .onTapGesture {
                 selectedRow = i; editingCell = nil
