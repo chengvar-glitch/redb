@@ -519,6 +519,7 @@ private struct ResultDataTable: View {
                         .truncationMode(.tail)
                         .frame(width: widths[i], height: 22, alignment: cellAlignment(cell))
                         .padding(.horizontal, 10)
+                        .contentShape(Rectangle())
                         .background(Color.clear)
                         .onTapGesture {
                             // Click cell: save previous edit, select row, enter edit
