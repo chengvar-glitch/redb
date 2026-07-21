@@ -236,6 +236,8 @@ private struct ResultDataTable: View {
     @State private var editingCell: (row: Int, col: Int)? = nil
     @State private var editText: String = ""
     @State private var dirtyCells: [Int: [Int: CellValue]] = [:]
+    @State private var selectedRow: Int? = nil
+    @State private var hoveredRow: Int? = nil
 
     private var hasDirtyCells: Bool {
         !dirtyCells.isEmpty
@@ -434,7 +436,11 @@ private struct ResultDataTable: View {
     // MARK: Data Row
 
     private func dataRow(_ row: [CellValue], index: Int, widths: [CGFloat]) -> some View {
-        HStack(spacing: 0) {
+        let isSelected = selectedRow == index
+        let isHovered = hoveredRow == index
+        let hasDirty = dirtyCells[index] != nil && !dirtyCells[index]!.isEmpty
+
+        return HStack(spacing: 0) {
             ForEach(Array(row.enumerated()), id: \.offset) { i, cell in
                 if editingCell?.row == index && editingCell?.col == i {
                     TextField("", text: $editText)
@@ -442,7 +448,7 @@ private struct ResultDataTable: View {
                         .font(.system(.caption, design: .monospaced))
                         .frame(width: widths[i], height: 22)
                         .padding(.horizontal, 10)
-                        .background(Color.accentColor.opacity(0.12))
+                        .background(Color.accentColor.opacity(0.15))
                         .onSubmit {
                             commitEdit(row: index, col: i)
                         }
@@ -451,8 +457,13 @@ private struct ResultDataTable: View {
                         .foregroundColor(foregroundForCell(cell))
                         .lineLimit(1)
                         .truncationMode(.tail)
-                        .frame(width: widths[i], height: 22, alignment: cell == .null ? .center : .leading)
+                        .frame(width: widths[i], height: 22, alignment: cellAlignment(cell))
                         .padding(.horizontal, 10)
+                        .background(
+                            hasDirty && dirtyCells[index]?[i] != nil
+                                ? Color.orange.opacity(0.08)
+                                : Color.clear
+                        )
                         .onTapGesture(count: 2) {
                             beginEdit(row: index, col: i, value: cell)
                         }
@@ -463,7 +474,13 @@ private struct ResultDataTable: View {
                 }
             }
         }
-        .background(index % 2 == 0 ? Color.clear : Color.gray.opacity(0.04))
+        .background(rowBackground(isSelected: isSelected, isHovered: isHovered, index: index))
+        .onTapGesture {
+            selectedRow = index
+        }
+        .onHover { hovering in
+            hoveredRow = hovering ? index : nil
+        }
         .contextMenu {
             if let tbl = tableName {
                 Button {
@@ -619,6 +636,26 @@ private struct ResultDataTable: View {
         case .int, .float:  return .accentColor
         case .text:         return .primary
         case .blob:         return .secondary
+        }
+    }
+
+    private func cellAlignment(_ cv: CellValue) -> Alignment {
+        switch cv {
+        case .int, .float:  return .trailing
+        case .null:         return .center
+        default:            return .leading
+        }
+    }
+
+    private func rowBackground(isSelected: Bool, isHovered: Bool, index: Int) -> Color {
+        if isSelected {
+            return Color.accentColor.opacity(0.12)
+        } else if isHovered {
+            return Color.accentColor.opacity(0.06)
+        } else if index % 2 == 0 {
+            return Color.clear
+        } else {
+            return Color.gray.opacity(0.04)
         }
     }
 }
