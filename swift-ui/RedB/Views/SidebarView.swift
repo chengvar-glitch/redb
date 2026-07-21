@@ -58,6 +58,7 @@ struct SidebarView: View {
             } label: {
                 Image(systemName: "plus")
             }
+            .tooltip("Add Connection")
         }
     }
 }
@@ -275,8 +276,7 @@ private struct AddConnectionSheet: View {
                     .padding(.horizontal, 12)
                     .padding(.vertical, 10)
                     .background(
-                        RoundedRectangle(cornerRadius: 6)
-                            .fill(selectedType == type ? Color.accentColor.opacity(0.1) : .clear)
+                        selectedType == type ? Color.accentColor.opacity(0.1) : Color.clear
                     )
                 }
                 .buttonStyle(.plain)
@@ -336,26 +336,27 @@ private struct AddConnectionSheet: View {
                         TextField("/path/to/database.sqlite", text: $filePath)
                             .textFieldStyle(.roundedBorder)
                             .font(.body.monospaced())
-                        Button {
-                            let panel = NSOpenPanel()
-                            panel.allowedContentTypes = [.data, .database]
-                            panel.canChooseDirectories = false
-                            panel.allowsMultipleSelection = false
-                            if panel.runModal() == .OK {
-                                filePath = panel.url?.path ?? ""
-                                if name.isEmpty {
-                                    name = panel.url?.deletingPathExtension().lastPathComponent ?? ""
+                                        Button {
+                                            let panel = NSOpenPanel()
+                                            panel.allowedContentTypes = [.data, .database]
+                                            panel.canChooseDirectories = false
+                                            panel.allowsMultipleSelection = false
+                                            if panel.runModal() == .OK {
+                                                filePath = panel.url?.path ?? ""
+                                                if name.isEmpty {
+                                                    name = panel.url?.deletingPathExtension().lastPathComponent ?? ""
+                                                }
+                                            }
+                                        } label: {
+                                            Image(systemName: "folder")
+                                        }
+                                        .tooltip("Browse…")
+                                        .buttonStyle(.borderless)
+                                    }
                                 }
                             }
-                        } label: {
-                            Image(systemName: "folder")
-                        }
-                        .buttonStyle(.borderless)
-                    }
-                }
-            }
 
-            if selectedType != .sqlite {
+                            if selectedType != .sqlite {
                 HStack(spacing: 8) {
                     formField("Host") {
                         TextField("localhost", text: $host)
@@ -593,8 +594,7 @@ private struct EditConnectionSheet: View {
                     .padding(.horizontal, 12)
                     .padding(.vertical, 10)
                     .background(
-                        RoundedRectangle(cornerRadius: 6)
-                            .fill(selectedType == type ? Color.accentColor.opacity(0.1) : .clear)
+                        selectedType == type ? Color.accentColor.opacity(0.1) : Color.clear
                     )
                 }
                 .buttonStyle(.plain)
@@ -645,6 +645,7 @@ private struct EditConnectionSheet: View {
                                             filePath = panel.url?.path ?? ""
                                         }
                                     } label: { Image(systemName: "folder") }
+                                        .tooltip("Browse…")
                                         .buttonStyle(.borderless)
                                 }
                             }

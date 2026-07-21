@@ -20,6 +20,7 @@
 		B46DBF62646C69924DAF7F4B /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 07459A73144D87C033B5BE5C /* Assets.xcassets */; };
 		B66CF440813A1DB4EDB3FEDF /* SQLQueryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F32586087AFC9E147589B79 /* SQLQueryView.swift */; };
 		C56E6E5C23FD738CDFCFC4F9 /* SidebarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9BBEFF86D85D5DE768E035F7 /* SidebarView.swift */; };
+		DB18374347A179781B47E515 /* View+Tooltip.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8027D61D09764777F8566BBD /* View+Tooltip.swift */; };
 		E0EEDAE20E7B4BA8D0183A92 /* RustBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7B5D3D5A8AC38A3E5EFE4FB /* RustBridge.swift */; };
 		F0B872469C74BA1B52CA6E85 /* DatabaseViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C0C22AC2D4E1AD420D6B91E /* DatabaseViewModel.swift */; };
 		F1DAA36E95426B0519AC6B90 /* redb_core.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2FE072BF989B369C6B2F738A /* redb_core.swift */; };
@@ -34,6 +35,7 @@
 		33C585DBC93086FA6FE3DE9F /* QueryResultModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QueryResultModel.swift; sourceTree = "<group>"; };
 		3F32586087AFC9E147589B79 /* SQLQueryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SQLQueryView.swift; sourceTree = "<group>"; };
 		750F3A6A2F82F5C899D2BED5 /* RedBApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RedBApp.swift; sourceTree = "<group>"; };
+		8027D61D09764777F8566BBD /* View+Tooltip.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = "View+Tooltip.swift"; sourceTree = "<group>"; };
 		81D4F94997B284FF9B88C737 /* RedB-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "RedB-Bridging-Header.h"; sourceTree = "<group>"; };
 		9BBEFF86D85D5DE768E035F7 /* SidebarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarView.swift; sourceTree = "<group>"; };
 		9C0C22AC2D4E1AD420D6B91E /* DatabaseViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DatabaseViewModel.swift; sourceTree = "<group>"; };
@@ -80,6 +82,7 @@
 				ADEA3E74D6A8EB4125113AA5 /* QueryTab.swift */,
 				1B651217C3D2CEC4E5DEC60F /* SavedQuery.swift */,
 				ED910F2235EA00A0E2F203CA /* SQLContext.swift */,
+				8027D61D09764777F8566BBD /* View+Tooltip.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -141,8 +144,6 @@
 			dependencies = (
 			);
 			name = RedB;
-			packageProductDependencies = (
-			);
 			productName = RedB;
 			productReference = C5671F93BC2DA9690CDFF297 /* RedB.app */;
 			productType = "com.apple.product-type.application";
@@ -230,6 +231,7 @@
 				21777C3ABDABC267DDC3A92D /* TableStructureView.swift in Sources */,
 				4AFFD2B0548F42FCE32EA63A /* Untitled.swift in Sources */,
 				F1DAA36E95426B0519AC6B90 /* redb_core.swift in Sources */,
+				DB18374347A179781B47E515 /* View+Tooltip.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -302,17 +304,23 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				LIBRARY_SEARCH_PATHS = (
-					"$(SRCROOT)/../target/release",
+				LIBRARY_SEARCH_PATHS = "$(SRCROOT)/../target/release";
+				OTHER_LDFLAGS = (
+					"-all_load",
+					"-force_load",
+					"$(SRCROOT)/../target/release/libredb_core.a",
+					"-lresolv",
+					"-lz",
+					"-framework",
+					Security,
+					"-framework",
+					SystemConfiguration,
 				);
-				OTHER_LDFLAGS = "-all_load -force_load $(SRCROOT)/../target/release/libredb_core.a -lresolv -lz -framework Security -framework SystemConfiguration";
 				OTHER_LIBTOOLFLAGS = "-all_load -force_load $(SRCROOT)/../target/release/libredb_core.a -lresolv -lz -framework Security -framework SystemConfiguration";
 				PRODUCT_BUNDLE_IDENTIFIER = com.redb.app;
 				SDKROOT = macosx;
 				SWIFT_OBJC_BRIDGING_HEADER = "$(SRCROOT)/RedB/RedB-Bridging-Header.h";
-				USER_HEADER_SEARCH_PATHS = (
-					"$(SRCROOT)/RedB/Generated",
-				);
+				USER_HEADER_SEARCH_PATHS = "$(SRCROOT)/RedB/Generated";
 			};
 			name = Debug;
 		};
@@ -326,17 +334,23 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				LIBRARY_SEARCH_PATHS = (
-					"$(SRCROOT)/../target/release",
+				LIBRARY_SEARCH_PATHS = "$(SRCROOT)/../target/release";
+				OTHER_LDFLAGS = (
+					"-all_load",
+					"-force_load",
+					"$(SRCROOT)/../target/release/libredb_core.a",
+					"-lresolv",
+					"-lz",
+					"-framework",
+					Security,
+					"-framework",
+					SystemConfiguration,
 				);
-				OTHER_LDFLAGS = "-all_load -force_load $(SRCROOT)/../target/release/libredb_core.a -lresolv -lz -framework Security -framework SystemConfiguration";
 				OTHER_LIBTOOLFLAGS = "-all_load -force_load $(SRCROOT)/../target/release/libredb_core.a -lresolv -lz -framework Security -framework SystemConfiguration";
 				PRODUCT_BUNDLE_IDENTIFIER = com.redb.app;
 				SDKROOT = macosx;
 				SWIFT_OBJC_BRIDGING_HEADER = "$(SRCROOT)/RedB/RedB-Bridging-Header.h";
-				USER_HEADER_SEARCH_PATHS = (
-					"$(SRCROOT)/RedB/Generated",
-				);
+				USER_HEADER_SEARCH_PATHS = "$(SRCROOT)/RedB/Generated";
 			};
 			name = Release;
 		};

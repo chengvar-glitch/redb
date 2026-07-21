@@ -89,9 +89,11 @@ struct TableBrowserView: View {
                 withAnimation { tablesExpanded.toggle() }
             } label: {
                 HStack(spacing: 4) {
-                    Image(systemName: tablesExpanded ? "folder.fill" : "folder")
-                        .font(.caption)
-                        .foregroundColor(.accentColor)
+                    Image(systemName: "chevron.right")
+                        .font(.caption2)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.secondary)
+                        .rotationEffect(.degrees(tablesExpanded ? 90 : 0))
                     Text("Tables")
                         .font(.caption)
                         .fontWeight(.semibold)
@@ -129,9 +131,11 @@ struct TableBrowserView: View {
                 withAnimation { savedQueriesExpanded.toggle() }
             } label: {
                 HStack(spacing: 4) {
-                    Image(systemName: savedQueriesExpanded ? "folder.fill" : "folder")
-                        .font(.caption)
-                        .foregroundColor(.accentColor)
+                    Image(systemName: "chevron.right")
+                        .font(.caption2)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.secondary)
+                        .rotationEffect(.degrees(savedQueriesExpanded ? 90 : 0))
                     Text("Query")
                         .font(.caption)
                         .fontWeight(.semibold)

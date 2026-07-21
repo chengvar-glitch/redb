@@ -119,20 +119,14 @@ private struct ColumnRow: View {
 
             Spacer()
 
-            // Badges
-            HStack(spacing: 4) {
-                if column.nullable {
-                    badge("NULL", color: .orange)
-                } else {
-                    badge("NOT NULL", color: .indigo)
-                }
-            }
-            .opacity(isHovered ? 1 : 0.6)
+            Text(column.nullable ? "NULL" : "NOT NULL")
+                .font(.caption2)
+                .foregroundColor(column.nullable ? .orange : .secondary)
+                .opacity(isHovered ? 1 : 0.6)
         }
         .padding(.vertical, 8)
         .padding(.horizontal, 8)
         .background(isHovered ? Color.accentColor.opacity(0.05) : .clear)
-        .cornerRadius(6)
         .onHover { h in withAnimation(.easeInOut(duration: 0.15)) { isHovered = h } }
     }
 
@@ -144,16 +138,5 @@ private struct ColumnRow: View {
         if upper.contains("DATE") || upper.contains("TIME") { return "calendar" }
         if upper.contains("BLOB") || upper.contains("BINARY") { return "doc" }
         return "questionmark.diamond"
-    }
-
-    private func badge(_ text: String, color: Color) -> some View {
-        Text(text)
-            .font(.caption2)
-            .fontWeight(.medium)
-            .foregroundColor(color)
-            .padding(.horizontal, 6)
-            .padding(.vertical, 2)
-            .background(color.opacity(0.12))
-            .cornerRadius(4)
     }
 }

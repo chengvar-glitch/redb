@@ -67,7 +67,7 @@ struct ContentView: View {
             .hidden()
         )
         .alert("Connection Failed", isPresented: $showErrorAlert) {
-            Button("OK") { vm.connectionError = nil }
+            Button("Dismiss") { vm.connectionError = nil }
         } message: {
             Text(vm.connectionError ?? "")
         }
@@ -87,7 +87,7 @@ struct ContentView: View {
             Task { await vm.connect(p) }
         }
         .alert("Tab Limit Reached", isPresented: $vm.showMaxTabsAlert) {
-            Button("OK") {}
+            Button("Dismiss") {}
         } message: {
             Text("You can have at most \(DatabaseViewModel.maxTabs) query tabs open at once. Close some tabs before opening new ones.")
         }

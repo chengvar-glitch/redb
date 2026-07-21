@@ -90,7 +90,7 @@ struct SQLQueryView: View {
                 .padding(.vertical, 5)
         }
         .menuStyle(.borderlessButton)
-        .menuIndicator(.hidden)
+        .menuIndicator(.visible)
         .fixedSize()
         .help("All Tabs")
     }
@@ -210,6 +210,7 @@ private struct QueryTabContentView: View {
                     .frame(maxHeight: .infinity)
             }
         }
+        .animation(.easeInOut(duration: 0.2), value: tab.queryLoadState.isLoaded || tab.queryLoadState.isLoading)
         .background(
             Button("") {
                 saveName = tab.title
@@ -304,6 +305,13 @@ private struct QueryTabContentView: View {
                     runButton
                 }
                 .padding(6)
+                .onHover { hovering in
+                    if hovering {
+                        NSCursor.arrow.push()
+                    } else {
+                        NSCursor.arrow.pop()
+                    }
+                }
             }
             .overlay(alignment: .topLeading) {
                 suggestionPopup
@@ -487,7 +495,7 @@ private struct QueryTabContentView: View {
                 .font(.subheadline)
                 .foregroundColor(.secondary)
         }
-        .frame(maxWidth: .infinity, maxHeight: 40)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     private func failureResults(_ msg: String) -> some View {
@@ -500,6 +508,6 @@ private struct QueryTabContentView: View {
                 .lineLimit(2)
         }
         .padding(.horizontal, 12)
-        .frame(maxWidth: .infinity, minHeight: 40)
+        .frame(maxWidth: .infinity, minHeight: 40, maxHeight: .infinity)
     }
 }

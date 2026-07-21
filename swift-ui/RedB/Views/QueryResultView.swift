@@ -69,6 +69,7 @@ struct QueryResultView: View {
                 } label: {
                     Image(systemName: "doc.on.doc")
                 }
+                .buttonStyle(.borderless)
                 .help("Copy as CSV")
 
                 Button {
@@ -76,6 +77,7 @@ struct QueryResultView: View {
                 } label: {
                     Image(systemName: "list.clipboard")
                 }
+                .buttonStyle(.borderless)
                 .help("Copy as INSERT")
 
                 Button {
@@ -83,6 +85,7 @@ struct QueryResultView: View {
                 } label: {
                     Image(systemName: "table")
                 }
+                .buttonStyle(.borderless)
                 .help("Copy as Markdown")
             }
         }
@@ -106,11 +109,11 @@ struct QueryResultView: View {
         .buttonStyle(.borderless)
         .controlSize(.small)
         .font(.caption)
-        .foregroundColor(isActive ? .white : .secondary)
+        .foregroundColor(isActive ? .accentColor : .secondary)
+        .fontWeight(isActive ? .semibold : .regular)
         .padding(.horizontal, 8)
         .padding(.vertical, 3)
-        .background(isActive ? Color.accentColor : .clear)
-        .cornerRadius(4)
+        .background(isActive ? Color.accentColor.opacity(0.12) : .clear)
     }
 
     private func copyAsCSV() {
@@ -416,7 +419,7 @@ private struct ResultDataTable: View {
     private func headerIcon(_ col: ColumnInfo) -> some View {
         if col.isPrimaryKey {
             Image(systemName: "key.fill")
-                .foregroundColor(Color(red: 0.85, green: 0.64, blue: 0.13))
+                .foregroundColor(.orange)
                 .font(.caption2)
         } else {
             Image(systemName: iconForType(col.dataType))

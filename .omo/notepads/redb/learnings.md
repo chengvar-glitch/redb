@@ -1,0 +1,12 @@
+## 2026-07-21 [ULW Init] Project structure learned
+- Project: redb — multi-backend database GUI client
+- Stack: Rust (redb-core) → uniffi FFI → SwiftUI (macOS)
+- rust-core/: 27 source files across 5 modules (db, sql, store, types, ffi)
+- swift-ui/: 15+ Swift files (Views/ Models/ Services/)
+- 5 DB backends feature-gated: sqlite (default), postgres, mysql, sqlserver, db2
+- uniffi 0.28 for FFI, Arc<Mutex<>> for thread safety
+- Swift calls FFI via ffiQueue.async + withCheckedThrowingContinuation
+- ConnectionStore/QueryStore: JSON-file persistence with atomic .tmp→rename writes
+- SQL Server column metadata not read from query results (uses col_{i})
+- DB2 list_tables returns empty Vec (not implemented)
+- build.rs is empty — uniffi scaffolding lives in lib.rs
