@@ -300,13 +300,6 @@ private struct QueryTabContentView: View {
                     runButton
                 }
                 .padding(6)
-                .onHover { hovering in
-                    if hovering {
-                        NSCursor.arrow.push()
-                    } else {
-                        NSCursor.arrow.pop()
-                    }
-                }
             }
             .overlay(alignment: .topLeading) {
                 suggestionPopup
@@ -431,6 +424,7 @@ private struct QueryTabContentView: View {
         .keyboardShortcut(.return, modifiers: [.command])
         .disabled(tab.sqlInput.trimmingCharacters(in: .whitespaces).isEmpty
             || vm.bridge.connectionStatus != .connected)
+        .onHover { if $0 { NSCursor.arrow.push() } else { NSCursor.pop() } }
     }
 
     private var runAllButton: some View {
@@ -445,6 +439,7 @@ private struct QueryTabContentView: View {
         .keyboardShortcut(.return, modifiers: [.command, .shift])
         .disabled(tab.sqlInput.trimmingCharacters(in: .whitespaces).isEmpty
             || vm.bridge.connectionStatus != .connected)
+        .onHover { if $0 { NSCursor.arrow.push() } else { NSCursor.pop() } }
     }
 
     private var saveButton: some View {
@@ -457,6 +452,7 @@ private struct QueryTabContentView: View {
         .controlSize(.small)
         .help("Save Query")
         .disabled(tab.sqlInput.trimmingCharacters(in: .whitespaces).isEmpty)
+        .onHover { if $0 { NSCursor.arrow.push() } else { NSCursor.pop() } }
     }
 
     private var formatButton: some View {
@@ -469,6 +465,7 @@ private struct QueryTabContentView: View {
         .controlSize(.small)
         .help("Format SQL")
         .disabled(tab.sqlInput.trimmingCharacters(in: .whitespaces).isEmpty)
+        .onHover { if $0 { NSCursor.arrow.push() } else { NSCursor.pop() } }
     }
 
     // MARK: - Results
