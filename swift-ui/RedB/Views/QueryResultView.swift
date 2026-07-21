@@ -357,8 +357,13 @@ private struct ResultDataTable: View {
                     .font(.system(.caption, design: .monospaced))
                     .frame(minWidth: geo.size.width, minHeight: geo.size.height, alignment: .topLeading)
                 }
-                // Keyboard navigation handled via hidden button shortcuts
-                // Table is the primary View for keyboard handling
+                // Keyboard handler (captures arrows, tab, enter, escape, Cmd+C)
+                // placed at the end so it overlays the table for first-responder
+                KeyEventHandler(
+                    onKeyDown: handleKeyEvent
+                )
+                .frame(width: 0, height: 0)
+                .allowsHitTesting(false)
             }
             .background(Color(nsColor: .controlBackgroundColor))
         }
@@ -768,23 +773,76 @@ private struct ResultDataTable: View {
         customColumnWidths = [:]
     }
 
-    private func handleMoveCommand(_ direction: MoveCommandDirection) {
-        guard let row = selectedRow else { return }
+    private func handleKeyEvent(_ event: NSEvent) -> Bool {
+        let chars = event.charactersIgnoringModifiers ?? ""
+        let mods = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+
+        // Cmd+C: copy selected cell/row
+        if mods == .command && chars == "c" {
+            guard let row = selectedRow else { return false }
+            let displayRow = sortColumn != nil ? sortedRows : lazyRows
+            guard row < displayRow.count else { return false }
+            let text = displayRow[row].map { displayCell($0) }.joined(separator: "\t")
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.setString(text, forType: .string)
+            return true
+        }
+
+        // If editing a cell, handle editing-specific keys
+        if editingCell != nil {
+            switch chars {
+            case "\r", "\n": // Enter → commit and move down
+                commitAndMove(direction: .down)
+                return true
+            case "\t": // Tab → commit and move right
+                commitAndMove(direction: .right)
+                return true
+            case "\u{19}": // Shift+Tab → commit and move left
+                commitAndMove(direction: .left)
+                return true
+            case "\u{1b}": // Escape → cancel edit
+                cancelEdits()
+                return true
+            default:
+                break
+            }
+        }
+
+        // Not editing: arrow keys for selection
+        guard let row = selectedRow else { selectedRow = 0; return true }
+        let total = lazyRows.count
+        switch chars {
+        case "\u{1b}" where editingCell == nil: // Escape → deselect
+            selectedRow = nil
+            return true
+        case "\u{f700}":  // Up arrow
+            selectedRow = row > 0 ? row - 1 : row
+            return true
+        case "\u{f701}":  // Down arrow
+            selectedRow = row < total - 1 ? row + 1 : row
+            return true
+        default:
+            return false
+        }
+    }
+
+    private enum MoveDirection { case up, down, left, right }
+
+    private func commitAndMove(direction: MoveDirection) {
+        guard let cell = editingCell else { return }
+        commitEdit(row: cell.row, col: cell.col)
         switch direction {
-        case .up:
-            if row > 0 { selectedRow = row - 1 }
-        case .down:
-            if row < lazyRows.count - 1 { selectedRow = row + 1 }
-        case .left:
-            if let editing = editingCell, editing.col > 0 {
-                editingCell = (editing.row, editing.col - 1)
-            }
-        case .right:
-            if let editing = editingCell, editing.col < columns.count - 1 {
-                editingCell = (editing.row, editing.col + 1)
-            }
-        @unknown default:
-            break
+        case .down where cell.row < lazyRows.count - 1:
+            editingCell = (cell.row + 1, cell.col)
+        case .right where cell.col < columns.count - 1:
+            editingCell = (cell.row, cell.col + 1)
+        case .left where cell.col > 0:
+            editingCell = (cell.row, cell.col - 1)
+        default:
+            editingCell = nil
+        }
+        if editingCell != nil {
+            editText = displayCell(lazyRows[editingCell!.row][editingCell!.col])
         }
     }
 
@@ -795,5 +853,40 @@ private struct ResultDataTable: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 6)
+    }
+}
+
+// MARK: - Keyboard Event Handler (macOS Native)
+
+struct KeyEventHandler: NSViewRepresentable {
+    let onKeyDown: (NSEvent) -> Bool
+
+    func makeNSView(context: Context) -> KeyCaptureView {
+        let view = KeyCaptureView()
+        view.onKeyDown = onKeyDown
+        DispatchQueue.main.async {
+            view.window?.makeFirstResponder(view)
+        }
+        return view
+    }
+
+    func updateNSView(_ nsView: KeyCaptureView, context: Context) {
+        nsView.onKeyDown = onKeyDown
+        if nsView.window?.firstResponder != nsView {
+            DispatchQueue.main.async {
+                nsView.window?.makeFirstResponder(nsView)
+            }
+        }
+    }
+}
+
+class KeyCaptureView: NSView {
+    var onKeyDown: ((NSEvent) -> Bool)?
+
+    override var acceptsFirstResponder: Bool { true }
+
+    override func keyDown(with event: NSEvent) {
+        if onKeyDown?(event) == true { return }
+        super.keyDown(with: event)
     }
 }
