@@ -635,10 +635,17 @@ private struct ResultDataTable: View {
 
         let q = quote
         let setClause = "\(q)\(columns[col].name)\(q) = \(sqlEscape(newVal))"
-        let whereClause = zip(columns, originalRow).map { (c, v) -> String in
-            let name = "\(q)\(c.name)\(q)"
-            if case .null = v { return "\(name) IS NULL" }
-            return "\(name) = \(sqlEscape(v))"
+
+        // 有主键 => 只用主键列做 WHERE；无主键 => 用全部列
+        let pkCols = columns.enumerated().filter { $0.element.isPrimaryKey }.map { $0.offset }
+        let whereCols = pkCols.isEmpty
+            ? Array(columns.enumerated().map { $0.offset })
+            : pkCols
+        let whereClause = whereCols.map { i -> String in
+            let name = "\(q)\(columns[i].name)\(q)"
+            let val = originalRow[i]
+            if case .null = val { return "\(name) IS NULL" }
+            return "\(name) = \(sqlEscape(val))"
         }.joined(separator: " AND ")
         let sql = "UPDATE \(q)\(tbl)\(q) SET \(setClause) WHERE \(whereClause);"
 
