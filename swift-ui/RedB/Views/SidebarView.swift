@@ -69,6 +69,7 @@ private struct ConnectionRow: View {
 
     @EnvironmentObject var vm: DatabaseViewModel
     @State private var showEditSheet = false
+    @State private var showNewTableSheet = false
 
     var body: some View {
         HStack(spacing: 10) {
@@ -137,7 +138,7 @@ private struct ConnectionRow: View {
                 .keyboardShortcut("n", modifiers: [.command])
 
                 Button {
-                    vm.newQueryTab(sql: "CREATE TABLE new_table (\n    id INTEGER PRIMARY KEY,\n    name TEXT\n);")
+                    showNewTableSheet = true
                 } label: {
                     Label("New Table", systemImage: "rectangle.stack.badge.plus")
                 }
@@ -196,6 +197,10 @@ private struct ConnectionRow: View {
         }
         .sheet(isPresented: $showEditSheet) {
             EditConnectionSheet(profile: profile)
+        }
+        .sheet(isPresented: $showNewTableSheet) {
+            NewTableSheet(profile: profile)
+                .environmentObject(vm)
         }
     }
 

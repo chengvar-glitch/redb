@@ -11,6 +11,7 @@
 		1AB7F6541433913D066680BA /* RedBApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 750F3A6A2F82F5C899D2BED5 /* RedBApp.swift */; };
 		1D357ABC9045B7634F42656A /* CodeEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6A939597A7BF78923E0C323 /* CodeEditor.swift */; };
 		21777C3ABDABC267DDC3A92D /* TableStructureView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8E0BD40496A3F0285ECC63A /* TableStructureView.swift */; };
+		2DE9003F5383F5E61507A32C /* NewTableSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 654BF95675E2EF86CDBF1BC3 /* NewTableSheet.swift */; };
 		42E91C1C6AF3A7BFF1289082 /* QueryResultView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA399098D9516F2E08B44A99 /* QueryResultView.swift */; };
 		4AFFD2B0548F42FCE32EA63A /* Untitled.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D91273D3215A5DBB0CBCB53 /* Untitled.swift */; };
 		4BE3280680DF2E6864D811EE /* SavedQuery.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B651217C3D2CEC4E5DEC60F /* SavedQuery.swift */; };
@@ -34,6 +35,7 @@
 		2FE072BF989B369C6B2F738A /* redb_core.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = redb_core.swift; sourceTree = "<group>"; };
 		33C585DBC93086FA6FE3DE9F /* QueryResultModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QueryResultModel.swift; sourceTree = "<group>"; };
 		3F32586087AFC9E147589B79 /* SQLQueryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SQLQueryView.swift; sourceTree = "<group>"; };
+		654BF95675E2EF86CDBF1BC3 /* NewTableSheet.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NewTableSheet.swift; sourceTree = "<group>"; };
 		750F3A6A2F82F5C899D2BED5 /* RedBApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RedBApp.swift; sourceTree = "<group>"; };
 		8027D61D09764777F8566BBD /* View+Tooltip.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = "View+Tooltip.swift"; sourceTree = "<group>"; };
 		81D4F94997B284FF9B88C737 /* RedB-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "RedB-Bridging-Header.h"; sourceTree = "<group>"; };
@@ -62,6 +64,7 @@
 				D98F0AAB2D9614321B17F5BD /* TableBrowserView.swift */,
 				F8E0BD40496A3F0285ECC63A /* TableStructureView.swift */,
 				9D91273D3215A5DBB0CBCB53 /* Untitled.swift */,
+				654BF95675E2EF86CDBF1BC3 /* NewTableSheet.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -232,6 +235,7 @@
 				4AFFD2B0548F42FCE32EA63A /* Untitled.swift in Sources */,
 				F1DAA36E95426B0519AC6B90 /* redb_core.swift in Sources */,
 				DB18374347A179781B47E515 /* View+Tooltip.swift in Sources */,
+				2DE9003F5383F5E61507A32C /* NewTableSheet.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
