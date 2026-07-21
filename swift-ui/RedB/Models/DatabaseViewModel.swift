@@ -221,9 +221,6 @@ final class DatabaseViewModel: ObservableObject {
 
     @Published var savedQueries: [SavedQuery] = []
 
-    // MARK: - Quick View 加载状态 --
-    @Published var quickViewLoading = false
-
     // -- Tab 限制 --
     static let maxTabs = 15
     @Published var showMaxTabsAlert = false
@@ -503,18 +500,19 @@ final class DatabaseViewModel: ObservableObject {
     // MARK: - Quick View
 
     func quickView(table: TableInfo) async {
-        let sql = "SELECT * FROM \(table.name) LIMIT \(rowLimit);" // placeholder, core handles quoting
-        quickViewLoading = true
-        defer { quickViewLoading = false }
+        let q = selectedConnection?.dbType == .mysql || selectedConnection?.dbType == .mariaDb ? "" : "\""
+        let sql = "SELECT * FROM \(q)\(table.name)\(q) LIMIT \(rowLimit);"
+        // 先创建 tab，立即设为 loading 状态（不切换 detailContent）
+        guard let tab = newQueryTab(sql: sql) else { return }
+        tab.queryLoadState = .loading
+        tab.title = table.name
         let result: QueryResult
         do {
             result = try await bridge.quickView(tableName: table.name, rowLimit: UInt32(rowLimit))
         } catch {
             result = QueryResult(columns: [], rows: [], rowsAffected: 0, executionTimeMs: 0)
         }
-        guard let tab = newQueryTab(sql: sql) else { return }
         tab.queryLoadState = .success([result])
-        tab.title = table.name
     }
 
     func refreshDatabases(for profile: ConnectionProfile) async {
