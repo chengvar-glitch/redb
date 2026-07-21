@@ -522,4 +522,14 @@ final class DatabaseViewModel: ObservableObject {
     func isConnected(_ profile: ConnectionProfile) -> Bool {
         bridge.connectionStatus == .connected && selectedConnection?.id == profile.id
     }
+
+    func didDeleteTable(_ name: String) {
+        if case .success(let tables) = tablesLoadState {
+            let updated = tables.filter { $0.name != name }
+            tablesLoadState = .success(updated)
+            if let conn = selectedConnection {
+                _ = try? store?.saveCachedTables(id: conn.id, tables: updated)
+            }
+        }
+    }
 }
