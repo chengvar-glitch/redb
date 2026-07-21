@@ -385,9 +385,7 @@ struct NewTableSheet: View {
             do {
                 let _: QueryResult = try await vm.bridge.executeQuery(sql)
                 dismiss()
-                let tab = vm.newQueryTab(sql: sql)
-                tab?.title = name
-                await vm.executeQuery()
+                await vm.refreshTables()
             } catch {
                 createError = error.localizedDescription
                 isCreating = false
