@@ -18,6 +18,7 @@
 		5CCDB620265197D98919F2C9 /* QueryTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADEA3E74D6A8EB4125113AA5 /* QueryTab.swift */; };
 		76D78E54234A2EA033B94C23 /* TableBrowserView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D98F0AAB2D9614321B17F5BD /* TableBrowserView.swift */; };
 		79A0A0BCF8FCA95B4854C611 /* SQLContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED910F2235EA00A0E2F203CA /* SQLContext.swift */; };
+		A0956C298EC59659892BEFDC /* DataTable.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1F62FE9E2C57E6EB3852F49 /* DataTable.swift */; };
 		B46DBF62646C69924DAF7F4B /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 07459A73144D87C033B5BE5C /* Assets.xcassets */; };
 		B66CF440813A1DB4EDB3FEDF /* SQLQueryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F32586087AFC9E147589B79 /* SQLQueryView.swift */; };
 		C56E6E5C23FD738CDFCFC4F9 /* SidebarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9BBEFF86D85D5DE768E035F7 /* SidebarView.swift */; };
@@ -45,6 +46,7 @@
 		A7B5D3D5A8AC38A3E5EFE4FB /* RustBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RustBridge.swift; sourceTree = "<group>"; };
 		ADEA3E74D6A8EB4125113AA5 /* QueryTab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QueryTab.swift; sourceTree = "<group>"; };
 		BA399098D9516F2E08B44A99 /* QueryResultView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QueryResultView.swift; sourceTree = "<group>"; };
+		C1F62FE9E2C57E6EB3852F49 /* DataTable.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DataTable.swift; sourceTree = "<group>"; };
 		C5671F93BC2DA9690CDFF297 /* RedB.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = RedB.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		C79C0158E67C408D575A2442 /* redb_coreFFI.modulemap */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.module-map"; path = redb_coreFFI.modulemap; sourceTree = "<group>"; };
 		D98F0AAB2D9614321B17F5BD /* TableBrowserView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TableBrowserView.swift; sourceTree = "<group>"; };
@@ -65,6 +67,7 @@
 				F8E0BD40496A3F0285ECC63A /* TableStructureView.swift */,
 				9D91273D3215A5DBB0CBCB53 /* Untitled.swift */,
 				654BF95675E2EF86CDBF1BC3 /* NewTableSheet.swift */,
+				C1F62FE9E2C57E6EB3852F49 /* DataTable.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -236,6 +239,7 @@
 				F1DAA36E95426B0519AC6B90 /* redb_core.swift in Sources */,
 				DB18374347A179781B47E515 /* View+Tooltip.swift in Sources */,
 				2DE9003F5383F5E61507A32C /* NewTableSheet.swift in Sources */,
+				A0956C298EC59659892BEFDC /* DataTable.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
