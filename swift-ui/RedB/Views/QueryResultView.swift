@@ -445,6 +445,14 @@ private struct ResultDataTable: View {
                 }
                 .buttonStyle(.plain)
                 .background(sortColumn == i ? Color.accentColor.opacity(0.1) : Color.accentColor.opacity(0.06))
+                .contextMenu {
+                    Button {
+                        NSPasteboard.general.clearContents()
+                        NSPasteboard.general.setString(col.name, forType: .string)
+                    } label: {
+                        Label("Copy \"\(col.name)\"", systemImage: "doc.on.doc")
+                    }
+                }
 
                 if i < columns.count - 1 {
                     Divider()
