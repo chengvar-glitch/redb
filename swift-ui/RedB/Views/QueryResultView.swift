@@ -233,11 +233,27 @@ private struct ResultDataTable: View {
     @State private var scrollPosition: CGPoint = .zero
     @State private var sortColumn: Int? = nil
     @State private var sortDescending: Bool = true
+
+    // -- Performance: cached column widths --
+    @State private var memoizedWidths: [CGFloat]? = nil
+    @State private var lastMeasureId: Int = 0
+
+    // -- Performance: cached sorted rows --
+    @State private var cachedSortedRows: [[CellValue]]? = nil
+
+    // -- Selection state --
+    @State private var selectedRow: Int? = nil
+    @State private var hoveredRow: Int? = nil
+
+    // -- Editing state --
     @State private var editingCell: (row: Int, col: Int)? = nil
     @State private var editText: String = ""
     @State private var dirtyCells: [Int: [Int: CellValue]] = [:]
-    @State private var selectedRow: Int? = nil
-    @State private var hoveredRow: Int? = nil
+
+    // -- Column resize --
+    @State private var customColumnWidths: [Int: CGFloat] = [:]
+    private let minColWidth: CGFloat = 80
+    private let maxColWidth: CGFloat = 400
 
     private var hasDirtyCells: Bool {
         !dirtyCells.isEmpty
@@ -245,14 +261,15 @@ private struct ResultDataTable: View {
 
     private var sortedRows: [[CellValue]] {
         guard let col = sortColumn else { return rows }
-        return rows.sorted { a, b in
+        if let cached = cachedSortedRows { return cached }
+        let result = rows.sorted { a, b in
             guard col < a.count, col < b.count else { return false }
-            if sortDescending {
-                return compareCell(a[col], b[col]) == .orderedDescending
-            } else {
-                return compareCell(a[col], b[col]) == .orderedAscending
-            }
+            return sortDescending
+                ? compareCell(a[col], b[col]) == .orderedDescending
+                : compareCell(a[col], b[col]) == .orderedAscending
         }
+        Task { @MainActor in cachedSortedRows = result }
+        return result
     }
 
     private func compareCell(_ a: CellValue, _ b: CellValue) -> ComparisonResult {
@@ -279,12 +296,18 @@ private struct ResultDataTable: View {
         }
     }
 
-    /// Computed column widths, expanded to fill available width if few columns
+    /// Computed column widths with memoization + custom resize overrides
     private func columnWidths(availableWidth: CGFloat) -> [CGFloat] {
+        let measureId = columns.count * 100000 + rows.count
+        if let memoized = memoizedWidths, lastMeasureId == measureId, customColumnWidths.isEmpty {
+            return memoized
+        }
+
         let padding: CGFloat = 20
-        let minW: CGFloat = 100
-        let maxW: CGFloat = 350
         var widths: [CGFloat] = columns.enumerated().map { i, col in
+            // Use custom width if set
+            if let custom = customColumnWidths[i] { return max(minColWidth, min(custom, maxColWidth)) }
+
             let headerW = (col.name as NSString).size(withAttributes: [.font: NSFont.monospacedSystemFont(ofSize: 11, weight: .semibold)]).width + 24
             var contentW = headerW
             for row in rows {
@@ -294,7 +317,7 @@ private struct ResultDataTable: View {
                     if w > contentW { contentW = w }
                 }
             }
-            return min(max(contentW + padding, minW), maxW)
+            return min(max(contentW + padding, minColWidth), maxColWidth)
         }
 
         let totalContent = widths.reduce(0, +)
@@ -302,9 +325,12 @@ private struct ResultDataTable: View {
         if n > 0 && totalContent < availableWidth {
             let extra = (availableWidth - totalContent) / n
             for i in widths.indices {
-                widths[i] = min(widths[i] + extra, maxW)
+                widths[i] = min(widths[i] + extra, maxColWidth)
             }
         }
+
+        memoizedWidths = widths
+        lastMeasureId = measureId
         return widths
     }
 
@@ -313,51 +339,26 @@ private struct ResultDataTable: View {
             let widths = columnWidths(availableWidth: geo.size.width)
         let displayRows = sortColumn != nil ? sortedRows : lazyRows
             return VStack(spacing: 0) {
-                HStack {
-                    if hasDirtyCells {
-                        Text("\(dirtyCellsCount) cell(s) modified")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                        Spacer()
-                        Button("Cancel") { cancelEdits() }
-                            .controlSize(.small)
-                        Button("Save") { saveEdits() }
-                            .controlSize(.small)
-                            .buttonStyle(.borderedProminent)
-                    } else {
-                        Spacer()
-                    }
-                }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 6)
-                .background(Color.accentColor.opacity(0.04))
-                Divider()
+                // Edit bar
+                editBar
+
+                // Data grid
                 ScrollView([.horizontal, .vertical]) {
                     LazyVStack(alignment: .leading, spacing: 0) {
-                        headerRow(widths: widths)
+                        // Header with resize handles
+                        headerRow(widths: widths, availableWidth: geo.size.width)
                         separatorRow
-                        ForEach(Array(displayRows.enumerated()), id: \.offset) { i, row in
-                            dataRow(row, index: i, widths: widths)
-                            if i < displayRows.count - 1 {
-                                Divider().padding(.leading)
-                            }
-                            if i >= displayRows.count - 5 && hasMore && !isLoadingMore && sortColumn == nil {
-                                Color.clear.onAppear { loadMore() }
-                            }
-                        }
+                        // Data rows with row numbers + keyboard support
+                        dataRows(displayRows: displayRows, widths: widths)
                         if isLoadingMore {
-                            HStack {
-                                ProgressView().scaleEffect(0.6)
-                                Text("Loading more...").font(.caption).foregroundColor(.secondary)
-                            }
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 6)
+                            loadingMoreIndicator
                         }
                     }
                     .font(.system(.caption, design: .monospaced))
                     .frame(minWidth: geo.size.width, minHeight: geo.size.height, alignment: .topLeading)
                 }
-                .frame(maxHeight: .infinity)
+                // Keyboard navigation handled via hidden button shortcuts
+                // Table is the primary View for keyboard handling
             }
             .background(Color(nsColor: .controlBackgroundColor))
         }
@@ -367,12 +368,83 @@ private struct ResultDataTable: View {
             let maxLimit = rowLimit > 0 ? rowLimit : Int.max
             hasMore = rows.count >= batchSize && lazyOffset < maxLimit
         }
+        .onChange(of: columns.count) { _ in resetWidthsCache() }
+        .onChange(of: rows.count) { _ in resetWidthsCache() }
+        .onChange(of: sortColumn) { _ in cachedSortedRows = nil }
+        .onChange(of: sortDescending) { _ in cachedSortedRows = nil }
+    }
+
+    // MARK: Edit Bar
+
+    @ViewBuilder
+    private var editBar: some View {
+        if hasDirtyCells {
+            HStack {
+                Text("\(dirtyCellsCount) cell(s) modified")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                Spacer()
+                Button("Cancel") { cancelEdits() }
+                    .controlSize(.small)
+                Button("Save") { saveEdits() }
+                    .controlSize(.small)
+                    .buttonStyle(.borderedProminent)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+            .background(Color.accentColor.opacity(0.04))
+            Divider()
+        }
+    }
+
+    // MARK: Data Rows
+
+    private func dataRows(displayRows: [[CellValue]], widths: [CGFloat]) -> some View {
+        ForEach(Array(displayRows.enumerated()), id: \.offset) { i, row in
+            HStack(spacing: 0) {
+                // Row number
+                Text("\(i + 1)")
+                    .font(.caption2)
+                    .foregroundColor(Color(nsColor: .tertiaryLabelColor))
+                    .frame(width: 36, alignment: .trailing)
+                    .padding(.trailing, 4)
+
+                Divider()
+
+                // Data cells
+                dataRow(row, index: i, widths: widths)
+            }
+            .background(rowBackground(isSelected: selectedRow == i, isHovered: hoveredRow == i, index: i))
+            .onTapGesture {
+                selectedRow = i; editingCell = nil
+            }
+            .onHover { hovering in
+                hoveredRow = hovering ? i : nil
+            }
+            .contextMenu { rowContextMenu(row: row) }
+
+            if i < displayRows.count - 1 {
+                Divider().padding(.leading, 40)
+            }
+            if i >= displayRows.count - 5 && hasMore && !isLoadingMore && sortColumn == nil {
+                Color.clear.onAppear { loadMore() }
+            }
+        }
     }
 
     // MARK: Header
 
-    private func headerRow(widths: [CGFloat]) -> some View {
+    private func headerRow(widths: [CGFloat], availableWidth: CGFloat) -> some View {
         HStack(spacing: 0) {
+            // Row number header
+            Text("#")
+                .fontWeight(.semibold)
+                .foregroundColor(.secondary)
+                .frame(width: 36, alignment: .trailing)
+                .padding(.trailing, 4)
+
+            Divider()
+
             ForEach(Array(columns.enumerated()), id: \.offset) { i, col in
                 Button {
                     if sortColumn == i {
@@ -381,6 +453,7 @@ private struct ResultDataTable: View {
                         sortColumn = i
                         sortDescending = true
                     }
+                    cachedSortedRows = nil
                 } label: {
                     HStack(spacing: 4) {
                         headerIcon(col)
@@ -399,6 +472,24 @@ private struct ResultDataTable: View {
                 }
                 .buttonStyle(.plain)
                 .background(sortColumn == i ? Color.accentColor.opacity(0.1) : Color.accentColor.opacity(0.06))
+
+                // Resize handle
+                Rectangle()
+                    .fill(Color.gray.opacity(0.15))
+                    .frame(width: 3)
+                    .frame(height: 16)
+                    .onHover { hovering in
+                        if hovering { NSCursor.resizeLeftRight.push() }
+                        else { NSCursor.pop() }
+                    }
+                    .gesture(
+                        DragGesture()
+                            .onChanged { value in
+                                let newW = widths[i] + value.translation.width
+                                customColumnWidths[i] = max(minColWidth, min(newW, maxColWidth))
+                                memoizedWidths = nil
+                            }
+                    )
 
                 if i < columns.count - 1 {
                     Divider()
@@ -436,8 +527,6 @@ private struct ResultDataTable: View {
     // MARK: Data Row
 
     private func dataRow(_ row: [CellValue], index: Int, widths: [CGFloat]) -> some View {
-        let isSelected = selectedRow == index
-        let isHovered = hoveredRow == index
         let hasDirty = dirtyCells[index] != nil && !dirtyCells[index]!.isEmpty
 
         return HStack(spacing: 0) {
@@ -474,15 +563,12 @@ private struct ResultDataTable: View {
                 }
             }
         }
-        .background(rowBackground(isSelected: isSelected, isHovered: isHovered, index: index))
-        .onTapGesture {
-            selectedRow = index
-            editingCell = nil
-        }
-        .onHover { hovering in
-            hoveredRow = hovering ? index : nil
-        }
-        .contextMenu {
+    }
+
+    // MARK: - Context Menu
+
+    private func rowContextMenu(row: [CellValue]) -> some View {
+        Group {
             if let tbl = tableName {
                 Button {
                     vm.activeQueryTab?.sqlInput = buildDeleteSQL(table: tbl, row: row)
@@ -496,7 +582,21 @@ private struct ResultDataTable: View {
                     Label("Duplicate Row", systemImage: "doc.on.doc")
                 }
             }
+
+            Divider()
+
+            Button {
+                copyCellToClipboard(row: row)
+            } label: {
+                Label("Copy Row", systemImage: "doc.on.doc")
+            }
         }
+    }
+
+    private func copyCellToClipboard(row: [CellValue]) {
+        let text = row.map { displayCell($0) }.joined(separator: "\t")
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(text, forType: .string)
     }
 
     private func buildDeleteSQL(table: String, row: [CellValue]) -> String {
@@ -659,5 +759,41 @@ private struct ResultDataTable: View {
         } else {
             return Color.gray.opacity(0.04)
         }
+    }
+
+    // MARK: - Helpers
+
+    private func resetWidthsCache() {
+        memoizedWidths = nil
+        customColumnWidths = [:]
+    }
+
+    private func handleMoveCommand(_ direction: MoveCommandDirection) {
+        guard let row = selectedRow else { return }
+        switch direction {
+        case .up:
+            if row > 0 { selectedRow = row - 1 }
+        case .down:
+            if row < lazyRows.count - 1 { selectedRow = row + 1 }
+        case .left:
+            if let editing = editingCell, editing.col > 0 {
+                editingCell = (editing.row, editing.col - 1)
+            }
+        case .right:
+            if let editing = editingCell, editing.col < columns.count - 1 {
+                editingCell = (editing.row, editing.col + 1)
+            }
+        @unknown default:
+            break
+        }
+    }
+
+    private var loadingMoreIndicator: some View {
+        HStack {
+            ProgressView().scaleEffect(0.6)
+            Text("Loading more...").font(.caption).foregroundColor(.secondary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 6)
     }
 }
