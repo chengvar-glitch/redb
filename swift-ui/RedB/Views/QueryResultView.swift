@@ -237,6 +237,7 @@ private struct ResultDataTable: View {
     // -- Performance: cached column widths --
     @State private var memoizedWidths: [CGFloat]? = nil
     @State private var lastMeasureId: Int = 0
+    @State private var containerWidth: CGFloat = 600
 
     // -- Performance: cached sorted rows --
     @State private var cachedSortedRows: [[CellValue]]? = nil
@@ -291,34 +292,39 @@ private struct ResultDataTable: View {
         }
     }
 
-    /// Computed column widths with memoization + custom resize overrides
+    /// Computed column widths — for >100 rows, uses header-only widths (avoids O(n*m) measurement).
     private func columnWidths(availableWidth: CGFloat) -> [CGFloat] {
         let measureId = columns.count * 100000 + rows.count
-        if let memoized = memoizedWidths, lastMeasureId == measureId, customColumnWidths.isEmpty {
+        if let memoized = memoizedWidths, lastMeasureId == measureId {
             return memoized
         }
 
-        let padding: CGFloat = 20
-        var widths: [CGFloat] = columns.enumerated().map { i, col in
-            // Use custom width if set
-            if let custom = customColumnWidths[i] { return max(minColWidth, min(custom, maxColWidth)) }
+        let nCols = CGFloat(columns.count)
+        guard nCols > 0 else { return [] }
 
-            let headerW = (col.name as NSString).size(withAttributes: [.font: NSFont.monospacedSystemFont(ofSize: 11, weight: .semibold)]).width + 24
+        let isLarge = rows.count > 100
+        var widths: [CGFloat] = columns.enumerated().map { i, col in
+            let headerW = (col.name as NSString).size(
+                withAttributes: [.font: NSFont.monospacedSystemFont(ofSize: 11, weight: .semibold)]
+            ).width + 24
+            if isLarge { return min(max(headerW + 20, minColWidth), maxColWidth) }
+
             var contentW = headerW
             for row in rows {
                 if i < row.count {
                     let text = displayCell(row[i])
-                    let w = (text as NSString).size(withAttributes: [.font: NSFont.monospacedSystemFont(ofSize: 11, weight: .regular)]).width + padding
+                    let w = (text as NSString).size(
+                        withAttributes: [.font: NSFont.monospacedSystemFont(ofSize: 11, weight: .regular)]
+                    ).width + 20
                     if w > contentW { contentW = w }
                 }
             }
-            return min(max(contentW + padding, minColWidth), maxColWidth)
+            return min(max(contentW + 20, minColWidth), maxColWidth)
         }
 
         let totalContent = widths.reduce(0, +)
-        let n = CGFloat(widths.count)
-        if n > 0 && totalContent < availableWidth {
-            let extra = (availableWidth - totalContent) / n
+        if totalContent < availableWidth {
+            let extra = (availableWidth - totalContent) / nCols
             for i in widths.indices {
                 widths[i] = min(widths[i] + extra, maxColWidth)
             }
@@ -330,32 +336,33 @@ private struct ResultDataTable: View {
     }
 
     var body: some View {
-        GeometryReader { geo in
-            let widths = columnWidths(availableWidth: geo.size.width)
-        let displayRows = sortColumn != nil ? sortedRows : lazyRows
-            return VStack(spacing: 0) {
-                // Data grid
-                ScrollView([.horizontal, .vertical]) {
-                    LazyVStack(alignment: .leading, spacing: 0) {
-                        // Header with resize handles
-                        headerRow(widths: widths, availableWidth: geo.size.width)
-                        separatorRow
-                        // Data rows with row numbers + keyboard support
-                        dataRows(displayRows: displayRows, widths: widths)
-                        if isLoadingMore {
-                            loadingMoreIndicator
+        VStack(spacing: 0) {
+            ScrollView([.horizontal, .vertical]) {
+                LazyVStack(alignment: .leading, spacing: 0) {
+                    GeometryReader { geo in
+                        Color.clear.onAppear {
+                            containerWidth = geo.size.width
                         }
+                        .onChange(of: geo.size.width) { containerWidth = $0 }
                     }
-                    .font(.system(.caption, design: .monospaced))
-                    .frame(minWidth: geo.size.width, minHeight: geo.size.height, alignment: .topLeading)
+                    .frame(height: 0)
+
+                    let widths = columnWidths(availableWidth: containerWidth)
+
+                    headerRow(widths: widths, availableWidth: containerWidth)
+                    separatorRow
+                    dataRows(displayRows: sortColumn != nil ? sortedRows : lazyRows, widths: widths)
+                    if isLoadingMore { loadingMoreIndicator }
                 }
-                // Keyboard handler (captures arrows, tab, enter, escape, Cmd+C)
-                // placed at the end so it overlays the table for first-responder
-                KeyEventHandler(onKeyDown: handleKeyEvent)
+                .font(.system(.caption, design: .monospaced))
+                .frame(minWidth: containerWidth, alignment: .topLeading)
+            }
+        }
+        .background(Color(nsColor: .controlBackgroundColor))
+        .overlay(alignment: .topLeading) {
+            KeyEventHandler(onKeyDown: handleKeyEvent)
                 .frame(width: 0, height: 0)
                 .allowsHitTesting(false)
-            }
-            .background(Color(nsColor: .controlBackgroundColor))
         }
         .onAppear {
             lazyRows = rows
@@ -507,13 +514,9 @@ private struct ResultDataTable: View {
                     Text(displayCell(cell))
                         .foregroundColor(foregroundForCell(cell))
                         .lineLimit(1)
-                        .truncationMode(.tail)
                         .frame(width: widths[i], height: 22, alignment: cellAlignment(cell))
                         .padding(.horizontal, 10)
-                        .contentShape(Rectangle())
-                        .background(Color.clear)
                         .onTapGesture {
-                            // Click cell: save previous edit, select row, enter edit
                             if let prev = editingCell, !(prev.row == index && prev.col == i) {
                                 commitAndSave(row: prev.row, col: prev.col)
                             }
