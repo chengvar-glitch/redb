@@ -263,6 +263,7 @@ private struct TableRow: View {
 
     @EnvironmentObject var vm: DatabaseViewModel
     @State private var showRename = false
+    @State private var isHovered = false
 
     private var quote: String {
         guard let db = vm.selectedConnection?.dbType else { return "\"" }
@@ -286,7 +287,9 @@ private struct TableRow: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.vertical, 4)
+        .background(isHovered ? Color.accentColor.opacity(0.06) : Color.clear)
         .contentShape(Rectangle())
+        .onHover { isHovered = $0 }
         .onTapGesture {
             Task { await vm.quickView(table: table) }
         }
