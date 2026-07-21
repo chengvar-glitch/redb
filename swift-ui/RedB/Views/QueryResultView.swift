@@ -490,7 +490,8 @@ private struct ResultDataTable: View {
                         .font(.system(.caption, design: .monospaced))
                         .frame(width: widths[i], height: 22)
                         .padding(.horizontal, 10)
-                        .background(Color.accentColor.opacity(0.15))
+                        .background(Color.accentColor.opacity(0.12))
+                        .border(Color.accentColor, width: 1.5)
                         .onSubmit {
                             commitAndSave(row: index, col: i)
                         }
@@ -635,7 +636,9 @@ private struct ResultDataTable: View {
         let q = quote
         let setClause = "\(q)\(columns[col].name)\(q) = \(sqlEscape(newVal))"
         let whereClause = zip(columns, originalRow).map { (c, v) -> String in
-            "\(q)\(c.name)\(q) = \(sqlEscape(v))"
+            let name = "\(q)\(c.name)\(q)"
+            if case .null = v { return "\(name) IS NULL" }
+            return "\(name) = \(sqlEscape(v))"
         }.joined(separator: " AND ")
         let sql = "UPDATE \(q)\(tbl)\(q) SET \(setClause) WHERE \(whereClause);"
 
