@@ -343,7 +343,9 @@ private struct TableRow: View {
             Button("Delete", role: .destructive) {
                 Task {
                     _ = try? await vm.bridge.executeQuery("DROP TABLE \(quote)\(table.name)\(quote);")
-                    await vm.refreshTables()
+                    if case .success(let tables) = vm.tablesLoadState {
+                        vm.tablesLoadState = .success(tables.filter { $0.name != table.name })
+                    }
                 }
             }
         } message: {
