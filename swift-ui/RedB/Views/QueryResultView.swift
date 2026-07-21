@@ -359,9 +359,7 @@ private struct ResultDataTable: View {
                 }
                 // Keyboard handler (captures arrows, tab, enter, escape, Cmd+C)
                 // placed at the end so it overlays the table for first-responder
-                KeyEventHandler(
-                    onKeyDown: handleKeyEvent
-                )
+                KeyEventHandler(onKeyDown: handleKeyEvent)
                 .frame(width: 0, height: 0)
                 .allowsHitTesting(false)
             }
@@ -777,49 +775,37 @@ private struct ResultDataTable: View {
         let chars = event.charactersIgnoringModifiers ?? ""
         let mods = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
 
-        // Cmd+C: copy selected cell/row
+        // Cmd+C: copy selected row as tab-separated values
         if mods == .command && chars == "c" {
-            guard let row = selectedRow else { return false }
-            let displayRow = sortColumn != nil ? sortedRows : lazyRows
-            guard row < displayRow.count else { return false }
-            let text = displayRow[row].map { displayCell($0) }.joined(separator: "\t")
+            guard let row = selectedRow, row < lazyRows.count else { return false }
+            let text = lazyRows[row].map { displayCell($0) }.joined(separator: "\t")
             NSPasteboard.general.clearContents()
             NSPasteboard.general.setString(text, forType: .string)
             return true
         }
 
-        // If editing a cell, handle editing-specific keys
-        if editingCell != nil {
-            switch chars {
-            case "\r", "\n": // Enter → commit and move down
-                commitAndMove(direction: .down)
-                return true
-            case "\t": // Tab → commit and move right
-                commitAndMove(direction: .right)
-                return true
-            case "\u{19}": // Shift+Tab → commit and move left
-                commitAndMove(direction: .left)
-                return true
-            case "\u{1b}": // Escape → cancel edit
-                cancelEdits()
-                return true
-            default:
-                break
-            }
-        }
-
-        // Not editing: arrow keys for selection
-        guard let row = selectedRow else { selectedRow = 0; return true }
-        let total = lazyRows.count
-        switch chars {
-        case "\u{1b}" where editingCell == nil: // Escape → deselect
+        // Escape: cancel editing or deselect
+        if chars == "\u{1b}" {
+            if editingCell != nil { cancelEdits(); return true }
             selectedRow = nil
             return true
-        case "\u{f700}":  // Up arrow
-            selectedRow = row > 0 ? row - 1 : row
+        }
+
+        // Editing keys handled by the TextField itself
+        guard editingCell == nil else { return false }
+
+        // Arrow keys: navigate selected row
+        let total = lazyRows.count
+        switch chars {
+        case "\u{f700}": // Up arrow
+            selectedRow = max(0, (selectedRow ?? 0) - 1)
             return true
-        case "\u{f701}":  // Down arrow
-            selectedRow = row < total - 1 ? row + 1 : row
+        case "\u{f701}": // Down arrow
+            selectedRow = min(total - 1, (selectedRow ?? -1) + 1)
+            return true
+        case "\u{f702}": // Left arrow (when not editing, no-op currently)
+            return true
+        case "\u{f703}": // Right arrow
             return true
         default:
             return false
@@ -872,11 +858,6 @@ struct KeyEventHandler: NSViewRepresentable {
 
     func updateNSView(_ nsView: KeyCaptureView, context: Context) {
         nsView.onKeyDown = onKeyDown
-        if nsView.window?.firstResponder != nsView {
-            DispatchQueue.main.async {
-                nsView.window?.makeFirstResponder(nsView)
-            }
-        }
     }
 }
 
