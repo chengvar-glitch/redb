@@ -237,7 +237,6 @@ private struct ResultDataTable: View {
     // -- Performance: cached column widths --
     @State private var memoizedWidths: [CGFloat]? = nil
     @State private var lastMeasureId: Int = 0
-    @State private var containerWidth: CGFloat = 600
 
     // -- Performance: cached sorted rows --
     @State private var cachedSortedRows: [[CellValue]]? = nil
@@ -336,33 +335,27 @@ private struct ResultDataTable: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            ScrollView([.horizontal, .vertical]) {
-                LazyVStack(alignment: .leading, spacing: 0) {
-                    GeometryReader { geo in
-                        Color.clear.onAppear {
-                            containerWidth = geo.size.width
-                        }
-                        .onChange(of: geo.size.width) { containerWidth = $0 }
+        GeometryReader { geo in
+            let widths = columnWidths(availableWidth: geo.size.width)
+            let displayRows = sortColumn != nil ? sortedRows : lazyRows
+            return VStack(spacing: 0) {
+                ScrollView([.horizontal, .vertical]) {
+                    LazyVStack(alignment: .leading, spacing: 0) {
+                        headerRow(widths: widths, availableWidth: geo.size.width)
+                        separatorRow
+                        dataRows(displayRows: displayRows, widths: widths)
+                        if isLoadingMore { loadingMoreIndicator }
                     }
-                    .frame(height: 0)
-
-                    let widths = columnWidths(availableWidth: containerWidth)
-
-                    headerRow(widths: widths, availableWidth: containerWidth)
-                    separatorRow
-                    dataRows(displayRows: sortColumn != nil ? sortedRows : lazyRows, widths: widths)
-                    if isLoadingMore { loadingMoreIndicator }
+                    .font(.system(.caption, design: .monospaced))
+                    .frame(minWidth: geo.size.width, alignment: .topLeading)
                 }
-                .font(.system(.caption, design: .monospaced))
-                .frame(minWidth: containerWidth, alignment: .topLeading)
             }
-        }
-        .background(Color(nsColor: .controlBackgroundColor))
-        .overlay(alignment: .topLeading) {
-            KeyEventHandler(onKeyDown: handleKeyEvent)
-                .frame(width: 0, height: 0)
-                .allowsHitTesting(false)
+            .background(Color(nsColor: .controlBackgroundColor))
+            .overlay(alignment: .topLeading) {
+                KeyEventHandler(onKeyDown: handleKeyEvent)
+                    .frame(width: 0, height: 0)
+                    .allowsHitTesting(false)
+            }
         }
         .onAppear {
             lazyRows = rows
