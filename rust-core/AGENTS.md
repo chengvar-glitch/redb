@@ -1,6 +1,22 @@
 # rust-core/
 
 Rust database engine — multi-backend SQL + schema browsing, exported via uniffi.
+**Core layer — ALL business logic lives here. UI layer must not contain any of this.**
+
+## CORE RESPONSIBILITIES (MANDATORY)
+
+**Rust Core MUST handle:**
+- 数据库连接管理、查询执行、元数据获取
+- SQL 解析、分类、格式化、上下文分析（`sql/parser.rs`）
+- 自动补全上下文分析（`analyze_sql_context`）
+- 控制语句识别（SET/USE/BEGIN/COMMIT/ROLLBACK）
+- 连接配置持久化（`ConnectionStore`/`QueryStore`）
+- 多后端差异封装（各数据库方言在 core 内部处理，UI 端不分后端）
+
+**FFI export boundary (`ffi.rs`):**
+- 所有 UI 可调用方法必须通过 `ffi.rs` 导出
+- 不暴露内部类型，只导出 uniffi-compatible 类型
+- 新平台接入只需实现 `Generated/redb_core.swift` 对应的绑定
 
 ## STRUCTURE
 

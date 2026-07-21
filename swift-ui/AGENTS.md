@@ -4,6 +4,7 @@ macOS SwiftUI client — three-column DB browser (sidebar | tables | SQL query).
 
 ## DESIGN PRINCIPLES (APPLE HIG — MANDATORY)
 
+### macOS HIG
 - **macOS Human Interface Guidelines**: 所有 UI 变更必须符合 Apple HIG。参考 App：Finder、Xcode、Mail、Safari。
 - **No iOS patterns**: 禁止 `.cornerRadius` 行高亮、pill badge、圆角卡片等 iOS 风格元素。macOS 使用平面高亮 + 文字标记。
 - **System icons**: 展开/折叠 = `chevron.right`（旋转），文件浏览 = `folder`，执行 = `play`。禁止用 `folder` 图标做展开折叠。
@@ -12,6 +13,27 @@ macOS SwiftUI client — three-column DB browser (sidebar | tables | SQL query).
 - **Menu indicators visible**: 所有 `Menu` 必须 `.menuIndicator(.visible)`，用户需要知道是可交互菜单。
 - **Animation**: `.easeInOut(duration: 0.2)` 用于布局切换，`.transition(.opacity)` 用于内容出现。禁止无动画突变。
 - **Cursor correctness**: 编辑器覆盖层上的按钮必须 `.onHover` 切换为 `NSCursor.arrow`，避免 NSTextView I-beam 光标穿透。
+
+### Architecture — Core/UI Separation (HIGHEST PRIORITY)
+
+**UI MUST NOT contain:**
+- ❌ 手写 SQL 字符串（SELECT/INSERT/UPDATE 等）— 全部通过 FFI 调用 core
+- ❌ 数据库方言判断（MySQL vs PostgreSQL vs SQLite）— core 封装
+- ❌ 端口号/默认值等数据库参数 — 通过 core 的 `databaseDefaultPort()` 获取
+- ❌ SQL 解析、分词、格式化逻辑 — core 的 `sql/parser.rs` 处理
+- ❌ 连接状态管理逻辑 — core 的 `DatabaseManager` 负责
+- ❌ 元数据获取 SQL（SHOW TABLES/INFORMATION_SCHEMA 等）— core 的 `listTables/currentDatabase/listDatabases`
+
+**UI MAY contain:**
+- ✅ 渲染布局、动画、过渡
+- ✅ 纯 UI 状态管理（LoadState, QueryTab 等 ObservableObject）
+- ✅ 静态关键词列表（语法高亮用，无业务逻辑的纯展示数据）
+- ✅ 快捷键映射、窗口管理
+- ✅ 用户交互事件处理（onTap, contextMenu, sheet）
+
+**Multi-platform readiness:**
+- UI 层无关任何数据库逻辑，可被任何 FFI 兼容平台替换（WinUI3/WPF/.NET MAUI/Electron）
+- 新平台只需实现 `Generated/redb_core.swift` 对应的绑定调用即可
 
 ## STRUCTURE
 
