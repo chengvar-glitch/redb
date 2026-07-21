@@ -249,7 +249,7 @@ private struct ResultDataTable: View {
     @State private var editingCell: (row: Int, col: Int)? = nil
     @State private var editText: String = ""
 
-    // -- Column resize --
+    // -- Column resize -- (deprecated, will re-add with proper NSTableView support)
     @State private var customColumnWidths: [Int: CGFloat] = [:]
     private let minColWidth: CGFloat = 80
     private let maxColWidth: CGFloat = 400
@@ -445,24 +445,6 @@ private struct ResultDataTable: View {
                 }
                 .buttonStyle(.plain)
                 .background(sortColumn == i ? Color.accentColor.opacity(0.1) : Color.accentColor.opacity(0.06))
-
-                // Resize handle
-                Rectangle()
-                    .fill(Color.gray.opacity(0.15))
-                    .frame(width: 3)
-                    .frame(height: 16)
-                    .onHover { hovering in
-                        if hovering { NSCursor.resizeLeftRight.push() }
-                        else { NSCursor.pop() }
-                    }
-                    .gesture(
-                        DragGesture()
-                            .onChanged { value in
-                                let newW = widths[i] + value.translation.width
-                                customColumnWidths[i] = max(minColWidth, min(newW, maxColWidth))
-                                memoizedWidths = nil
-                            }
-                    )
 
                 if i < columns.count - 1 {
                     Divider()
