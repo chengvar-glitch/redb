@@ -12,6 +12,7 @@ struct SQLQueryView: View {
 
             if let tab = vm.activeQueryTab {
                 QueryTabContentView(tab: tab, onSave: { tabToSave = $0; saveQueryName = $0.title; showSaveSheet = true })
+                    .id(tab.id)
             } else {
                 emptyState
             }
