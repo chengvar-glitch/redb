@@ -80,3 +80,46 @@ fn test_query_without_connect_errors() {
     let err = mgr.execute_query("SELECT 1").unwrap_err();
     assert!(matches!(err, redb_core::types::DbError::NotConnected));
 }
+
+#[test]
+fn test_sqlite_leading_comment_select() {
+    // S5: SELECT preceded by a leading SQL comment must still return rows.
+    // Before the fix, the is_query check fails (trimmed starts with "--" not "SELECT")
+    // and the row data is silently dropped.
+    let mgr = create_manager();
+    mgr.connect().unwrap();
+    mgr.execute_query("CREATE TABLE test (id INT)").unwrap();
+    mgr.execute_query("INSERT INTO test VALUES (99)").unwrap();
+
+    let result = mgr
+        .execute_query("-- leading comment\nSELECT * FROM test")
+        .expect("comment-prefixed SELECT should work");
+    assert_eq!(
+        result.rows.len(),
+        1,
+        "expected 1 row from comment-prefixed SELECT, got {} — is_query detection bug",
+        result.rows.len()
+    );
+    assert_eq!(result.columns.len(), 1);
+    assert_eq!(format!("{}", result.rows[0][0]), "99");
+}
+
+#[test]
+fn test_sqlite_begin_commit_executed_on_connection() {
+    // Prove that control statements (BEGIN/COMMIT) actually reach the connection
+    // and aren't short-circuited anymore. We can also prove INSERT inside a
+    // transaction is committed.
+    let mgr = create_manager();
+    mgr.connect().unwrap();
+    mgr.execute_query("CREATE TABLE tx_test (id INT)").unwrap();
+
+    // BEGIN: now actually sent to SQLite
+    mgr.execute_query("BEGIN").expect("BEGIN should execute on connection");
+    mgr.execute_query("INSERT INTO tx_test VALUES (42)").unwrap();
+    mgr.execute_query("COMMIT").expect("COMMIT should execute on connection");
+
+    // Verify the insert persisted
+    let result = mgr.execute_query("SELECT * FROM tx_test").unwrap();
+    assert_eq!(result.rows.len(), 1);
+    assert_eq!(format!("{}", result.rows[0][0]), "42");
+}

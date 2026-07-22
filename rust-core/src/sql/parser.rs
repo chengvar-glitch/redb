@@ -72,6 +72,37 @@ pub fn split_sql(sql: &str) -> Vec<String> {
         .collect()
 }
 
+pub fn strip_leading_comments(sql: &str) -> &str {
+    let bytes = sql.as_bytes();
+    let mut i = 0;
+    let n = bytes.len();
+    loop {
+        while i < n && bytes[i].is_ascii_whitespace() {
+            i += 1;
+        }
+        if i + 1 < n && bytes[i] == b'-' && bytes[i + 1] == b'-' {
+            while i < n && bytes[i] != b'\n' {
+                i += 1;
+            }
+            continue;
+        }
+        if i + 1 < n && bytes[i] == b'/' && bytes[i + 1] == b'*' {
+            i += 2;
+            while i + 1 < n && !(bytes[i] == b'*' && bytes[i + 1] == b'/') {
+                i += 1;
+            }
+            if i + 1 < n {
+                i += 2;
+            } else {
+                i = n;
+            }
+            continue;
+        }
+        break;
+    }
+    &sql[i..]
+}
+
 // ---------------------------------------------------------------------------
 // Extract table names from SQL
 // ---------------------------------------------------------------------------
@@ -343,5 +374,47 @@ mod tests {
     fn test_sql_context_statement_start() {
         let ctx = analyze_sql_context("", 0);
         assert_eq!(ctx.completion_type, SqlCompletionType::Statement);
+    }
+
+    #[test]
+    fn test_strip_leading_comments_line() {
+        // S1: single line comment before WITH
+        assert_eq!(strip_leading_comments("-- 汇总\nWITH cte AS (SELECT 1) SELECT * FROM cte"),
+                   "WITH cte AS (SELECT 1) SELECT * FROM cte");
+    }
+
+    #[test]
+    fn test_strip_leading_comments_block() {
+        // S2: block comment before SELECT
+        assert_eq!(strip_leading_comments("/* multiline\n comment */\n\nSELECT 1"),
+                   "SELECT 1");
+    }
+
+    #[test]
+    fn test_strip_leading_comments_mixed() {
+        // S3: mixed line + block + line comments before WITH
+        let input = "-- a\n-- b\n/* c\n multi */\n-- d\nWITH x AS (SELECT 1) SELECT x FROM x";
+        assert_eq!(strip_leading_comments(input),
+                   "WITH x AS (SELECT 1) SELECT x FROM x");
+    }
+
+    #[test]
+    fn test_strip_leading_comments_only() {
+        // S4: only comments, no SQL — returns empty
+        assert_eq!(strip_leading_comments("-- only\n/* stuff */\n   "), "");
+    }
+
+    #[test]
+    fn test_strip_leading_comments_no_comment() {
+        // Sanity: pass-through when no leading comment
+        assert_eq!(strip_leading_comments("SELECT 1"), "SELECT 1");
+        assert_eq!(strip_leading_comments("   SELECT 1"), "SELECT 1");
+    }
+
+    #[test]
+    fn test_strip_leading_comments_inline_not_leading() {
+        // Regression: comments AFTER the keyword must be preserved verbatim
+        let sql = "SELECT 1 -- trailing";
+        assert_eq!(strip_leading_comments(sql), "SELECT 1 -- trailing");
     }
 }

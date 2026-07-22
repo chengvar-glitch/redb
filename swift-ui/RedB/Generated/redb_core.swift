@@ -1242,10 +1242,15 @@ public struct DatabaseConfig {
     public var password: String?
     public var maxConnections: UInt32
     public var logPath: String?
+    public var useSshTunnel: Bool
+    public var sshHost: String?
+    public var sshPort: UInt32?
+    public var sshUsername: String?
+    public var sshPassword: String?
 
     // Default memberwise initializers are never public by default, so we
     // declare one manually.
-    public init(dbType: DatabaseType, url: String, host: String?, port: UInt32?, database: String?, username: String?, password: String?, maxConnections: UInt32, logPath: String?) {
+    public init(dbType: DatabaseType, url: String, host: String?, port: UInt32?, database: String?, username: String?, password: String?, maxConnections: UInt32, logPath: String?, useSshTunnel: Bool, sshHost: String?, sshPort: UInt32?, sshUsername: String?, sshPassword: String?) {
         self.dbType = dbType
         self.url = url
         self.host = host
@@ -1255,6 +1260,11 @@ public struct DatabaseConfig {
         self.password = password
         self.maxConnections = maxConnections
         self.logPath = logPath
+        self.useSshTunnel = useSshTunnel
+        self.sshHost = sshHost
+        self.sshPort = sshPort
+        self.sshUsername = sshUsername
+        self.sshPassword = sshPassword
     }
 }
 
@@ -1289,6 +1299,21 @@ extension DatabaseConfig: Equatable, Hashable {
         if lhs.logPath != rhs.logPath {
             return false
         }
+        if lhs.useSshTunnel != rhs.useSshTunnel {
+            return false
+        }
+        if lhs.sshHost != rhs.sshHost {
+            return false
+        }
+        if lhs.sshPort != rhs.sshPort {
+            return false
+        }
+        if lhs.sshUsername != rhs.sshUsername {
+            return false
+        }
+        if lhs.sshPassword != rhs.sshPassword {
+            return false
+        }
         return true
     }
 
@@ -1302,6 +1327,11 @@ extension DatabaseConfig: Equatable, Hashable {
         hasher.combine(password)
         hasher.combine(maxConnections)
         hasher.combine(logPath)
+        hasher.combine(useSshTunnel)
+        hasher.combine(sshHost)
+        hasher.combine(sshPort)
+        hasher.combine(sshUsername)
+        hasher.combine(sshPassword)
     }
 }
 
@@ -1321,7 +1351,12 @@ public struct FfiConverterTypeDatabaseConfig: FfiConverterRustBuffer {
                 username: FfiConverterOptionString.read(from: &buf), 
                 password: FfiConverterOptionString.read(from: &buf), 
                 maxConnections: FfiConverterUInt32.read(from: &buf), 
-                logPath: FfiConverterOptionString.read(from: &buf)
+                logPath: FfiConverterOptionString.read(from: &buf), 
+                useSshTunnel: FfiConverterBool.read(from: &buf), 
+                sshHost: FfiConverterOptionString.read(from: &buf), 
+                sshPort: FfiConverterOptionUInt32.read(from: &buf), 
+                sshUsername: FfiConverterOptionString.read(from: &buf), 
+                sshPassword: FfiConverterOptionString.read(from: &buf)
         )
     }
 
@@ -1335,6 +1370,11 @@ public struct FfiConverterTypeDatabaseConfig: FfiConverterRustBuffer {
         FfiConverterOptionString.write(value.password, into: &buf)
         FfiConverterUInt32.write(value.maxConnections, into: &buf)
         FfiConverterOptionString.write(value.logPath, into: &buf)
+        FfiConverterBool.write(value.useSshTunnel, into: &buf)
+        FfiConverterOptionString.write(value.sshHost, into: &buf)
+        FfiConverterOptionUInt32.write(value.sshPort, into: &buf)
+        FfiConverterOptionString.write(value.sshUsername, into: &buf)
+        FfiConverterOptionString.write(value.sshPassword, into: &buf)
     }
 }
 

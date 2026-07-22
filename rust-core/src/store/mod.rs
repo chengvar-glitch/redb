@@ -267,6 +267,11 @@ mod tests {
             password: Some("pass".into()),
             max_connections: 5,
             log_path: None,
+            use_ssh_tunnel: false,
+            ssh_host: None,
+            ssh_port: None,
+            ssh_username: None,
+            ssh_password: None,
         }
     }
 
@@ -326,6 +331,73 @@ mod tests {
 
         store.delete("b".into()).unwrap();
         assert_eq!(store.list_all().unwrap().len(), 2);
+
+        let _ = std::fs::remove_file(&tmp);
+    }
+
+    #[test]
+    fn test_backward_compat_old_json_without_ssh_fields() {
+        let tmp = std::env::temp_dir().join("redb_test_bc.json");
+        let legacy_json = r#"[
+            {
+                "id": "legacy1",
+                "name": "Legacy MySQL",
+                "config": {
+                    "db_type": "MySql",
+                    "url": "",
+                    "host": "db.example.com",
+                    "port": 3306,
+                    "database": "app",
+                    "username": "root",
+                    "password": "secret",
+                    "max_connections": 10,
+                    "log_path": null
+                }
+            }
+        ]"#;
+        std::fs::write(&tmp, legacy_json).unwrap();
+
+        let store = ConnectionStore::open(tmp.to_str().unwrap().to_string()).unwrap();
+        let loaded = store.load("legacy1".into()).unwrap().unwrap();
+
+        assert_eq!(loaded.config.host.as_deref(), Some("db.example.com"));
+        assert_eq!(loaded.config.use_ssh_tunnel, false);
+        assert!(loaded.config.ssh_host.is_none());
+        assert!(loaded.config.ssh_password.is_none());
+
+        let _ = std::fs::remove_file(&tmp);
+    }
+
+    #[test]
+    fn test_ssh_tunnel_fields_roundtrip() {
+        let tmp = std::env::temp_dir().join("redb_test_ssh_rt.json");
+        let _ = std::fs::remove_file(&tmp);
+
+        let mut cfg = test_config();
+        cfg.db_type = DatabaseType::MySql;
+        cfg.host = Some("mysql.internal".into());
+        cfg.port = Some(3306);
+        cfg.use_ssh_tunnel = true;
+        cfg.ssh_host = Some("bastion.example.com".into());
+        cfg.ssh_port = Some(2222);
+        cfg.ssh_username = Some("deploy".into());
+        cfg.ssh_password = Some("s3cret".into());
+
+        let store = ConnectionStore::open(tmp.to_str().unwrap().to_string()).unwrap();
+        store.save("ssh1".into(), "Prod via bastion".into(), cfg).unwrap();
+
+        let raw = std::fs::read_to_string(&tmp).unwrap();
+        assert!(raw.contains("\"use_ssh_tunnel\": true"), "expected serialized use_ssh_tunnel=true, got:\n{raw}");
+        assert!(raw.contains("\"ssh_host\": \"bastion.example.com\""));
+        assert!(raw.contains("\"ssh_port\": 2222"));
+
+        let loaded = store.load("ssh1".into()).unwrap().unwrap();
+        assert_eq!(loaded.config.use_ssh_tunnel, true);
+        assert_eq!(loaded.config.ssh_host.as_deref(), Some("bastion.example.com"));
+        assert_eq!(loaded.config.ssh_port, Some(2222));
+        assert_eq!(loaded.config.ssh_username.as_deref(), Some("deploy"));
+        assert_eq!(loaded.config.ssh_password.as_deref(), Some("s3cret"));
+        assert_eq!(loaded.config.host.as_deref(), Some("mysql.internal"));
 
         let _ = std::fs::remove_file(&tmp);
     }

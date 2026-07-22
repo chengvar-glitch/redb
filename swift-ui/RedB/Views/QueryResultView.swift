@@ -179,8 +179,20 @@ private struct ResultDataTable: View {
     private let batchSize = 200
     @State private var sortColumn: Int? = nil
     @State private var sortDescending: Bool = true
-    @State private var selectedRow: Int? = nil
+    @State private var selectedRows: Set<Int> = []
     @State private var cachedSortedRows: [[CellValue]]? = nil
+
+    private var pkColumnIndices: [Int] {
+        columns.enumerated().filter { $0.element.isPrimaryKey }.map { $0.offset }
+    }
+
+    private var tableName: String? {
+        extractTableName(from: baseSql)
+    }
+
+    private var dataRows: [[CellValue]] {
+        sortColumn != nil ? sortedRows : lazyRows
+    }
 
     private var sortedRows: [[CellValue]] {
         guard let col = sortColumn else { return rows }
@@ -208,16 +220,20 @@ private struct ResultDataTable: View {
     var body: some View {
         DataTable(
             columns: columns,
-            rows: sortColumn != nil ? sortedRows : lazyRows,
+            rows: dataRows,
             sortColumn: sortColumn,
             sortDescending: sortDescending,
-            selectedRow: selectedRow,
+            selectedRows: selectedRows,
+            pkColumnIndices: pkColumnIndices,
+            tableName: tableName,
             onSort: { col, desc in sortColumn = col; sortDescending = desc; cachedSortedRows = nil },
-            onSelectRow: { selectedRow = $0 },
-            onDoubleClickCell: { row, col in
-                let data = sortColumn != nil ? sortedRows : lazyRows
-                guard row < data.count, col < data[row].count else { return }
-                selectedRow = row
+            onSelectedRowsChanged: { selectedRows = $0 },
+            onCommitEdit: { row, col, newValue in
+                vm.updateCell(tableName: tableName, row: row, col: col, newValue: newValue,
+                              pkColumns: pkColumnIndices, dataRows: dataRows, columns: columns)
+            },
+            onDataTableAction: { action in
+                handleDataTableAction(action)
             }
         )
         .onAppear {
@@ -227,5 +243,53 @@ private struct ResultDataTable: View {
         }
         .onChange(of: columns.count) { _ in cachedSortedRows = nil }
         .onChange(of: rows.count) { _ in cachedSortedRows = nil }
+    }
+
+    private func handleDataTableAction(_ action: DataTableAction) {
+        let data = dataRows
+        switch action {
+        case .copyCell(let row, let col):
+            guard row < data.count, col < data[row].count else { return }
+            let value = displayCellValue(data[row][col])
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.setString(value, forType: .string)
+
+        case .copyRow(let row):
+            guard row < data.count else { return }
+            let line = columns.map(\.name).joined(separator: "\t") + "\n"
+                + data[row].map { displayCellValue($0) }.joined(separator: "\t")
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.setString(line, forType: .string)
+
+        case .copySelected(let rows):
+            let lines: [String] = rows.sorted().compactMap { r -> String? in
+                guard r < data.count else { return nil }
+                return data[r].map { displayCellValue($0) }.joined(separator: "\t")
+            }
+            let result = columns.map(\.name).joined(separator: "\t") + "\n" + lines.joined(separator: "\n")
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.setString(result, forType: .string)
+
+        case .copySelectedAsCSV(let rows):
+            let lines: [String] = rows.sorted().compactMap { r -> String? in
+                guard r < data.count else { return nil }
+                return data[r].map { cell in
+                    switch cell {
+                    case .text(let v): return "\"\(v.replacingOccurrences(of: "\"", with: "\"\""))\""
+                    case .null: return ""
+                    default: return displayCellValue(cell)
+                    }
+                }.joined(separator: ",")
+            }
+            let result = columns.map(\.name).joined(separator: ",") + "\n" + lines.joined(separator: "\n")
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.setString(result, forType: .string)
+
+        case .deleteRows(let rows, let table):
+            Task {
+                await vm.deleteRows(rows: rows.sorted(), table: table,
+                                    pkColumns: pkColumnIndices, dataRows: data, columns: columns)
+            }
+        }
     }
 }

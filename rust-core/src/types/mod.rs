@@ -92,6 +92,19 @@ pub struct DatabaseConfig {
     pub password: Option<String>,
     pub max_connections: u32,
     pub log_path: Option<String>,
+
+    // ---- SSH tunnel (MySQL/MariaDB only) ----
+    // All optional to keep JSON forward/backward compatible with pre-tunnel configs.
+    #[serde(default)]
+    pub use_ssh_tunnel: bool,
+    #[serde(default)]
+    pub ssh_host: Option<String>,
+    #[serde(default)]
+    pub ssh_port: Option<u32>,
+    #[serde(default)]
+    pub ssh_username: Option<String>,
+    #[serde(default)]
+    pub ssh_password: Option<String>,
 }
 
 impl DatabaseType {
@@ -125,6 +138,11 @@ impl DatabaseConfig {
             password: None,
             max_connections: 10,
             log_path: None,
+            use_ssh_tunnel: false,
+            ssh_host: None,
+            ssh_port: None,
+            ssh_username: None,
+            ssh_password: None,
         }
     }
 

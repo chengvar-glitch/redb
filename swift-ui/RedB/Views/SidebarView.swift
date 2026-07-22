@@ -216,6 +216,11 @@ private struct AddConnectionSheet: View {
     @State private var database: String = ""
     @State private var username: String = ""
     @State private var password: String = ""
+    @State private var useSshTunnel: Bool = false
+    @State private var sshHost: String = ""
+    @State private var sshPort: String = "22"
+    @State private var sshUsername: String = ""
+    @State private var sshPassword: String = ""
     @State private var testState: TestState = .idle
 
     private enum TestState {
@@ -224,6 +229,14 @@ private struct AddConnectionSheet: View {
 
     private var resolvedPort: UInt32 {
         UInt32(port) ?? databaseDefaultPort(dbType: selectedType.toFFI)
+    }
+
+    private var resolvedSshPort: UInt32 {
+        UInt32(sshPort) ?? 22
+    }
+
+    private var supportsSshTunnel: Bool {
+        selectedType == .mysql || selectedType == .mariaDb
     }
 
     private var isValid: Bool {
@@ -382,6 +395,52 @@ private struct AddConnectionSheet: View {
                         .textFieldStyle(.roundedBorder)
                         .font(.body.monospaced())
                 }
+
+                if supportsSshTunnel {
+                    Divider().padding(.vertical, 4)
+                    sshTunnelSection
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var sshTunnelSection: some View {
+        Toggle(isOn: $useSshTunnel) {
+            HStack(spacing: 6) {
+                Image(systemName: "lock.shield")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                Text("Connect via SSH Tunnel")
+                    .font(.callout)
+            }
+        }
+        .toggleStyle(.switch)
+        .controlSize(.small)
+
+        if useSshTunnel {
+            HStack(spacing: 8) {
+                formField("SSH Host") {
+                    TextField("bastion.example.com", text: $sshHost)
+                        .textFieldStyle(.roundedBorder)
+                        .font(.body.monospaced())
+                }
+                formField("SSH Port") {
+                    TextField("22", text: $sshPort)
+                        .textFieldStyle(.roundedBorder)
+                        .frame(width: 70)
+                        .font(.body.monospaced())
+                }
+            }
+            formField("SSH Username") {
+                TextField("root", text: $sshUsername)
+                    .textFieldStyle(.roundedBorder)
+                    .font(.body.monospaced())
+            }
+            formField("SSH Password") {
+                SecureField("ssh password", text: $sshPassword)
+                    .textFieldStyle(.roundedBorder)
+                    .font(.body.monospaced())
             }
         }
     }
@@ -460,7 +519,12 @@ private struct AddConnectionSheet: View {
                 port: resolvedPort,
                 database: database.isEmpty ? nil : database,
                 username: username.isEmpty ? nil : username,
-                password: password.isEmpty ? nil : password
+                password: password.isEmpty ? nil : password,
+                useSshTunnel: useSshTunnel && supportsSshTunnel,
+                sshHost: sshHost.isEmpty ? nil : sshHost,
+                sshPort: resolvedSshPort,
+                sshUsername: sshUsername.isEmpty ? nil : sshUsername,
+                sshPassword: sshPassword.isEmpty ? nil : sshPassword
             )
             testState = .success
         } catch {
@@ -494,7 +558,12 @@ private struct AddConnectionSheet: View {
             port: resolvedPort,
             database: database,
             username: username,
-            password: password
+            password: password,
+            useSshTunnel: useSshTunnel && supportsSshTunnel,
+            sshHost: sshHost,
+            sshPort: resolvedSshPort,
+            sshUsername: sshUsername,
+            sshPassword: sshPassword
         )
         vm.addConnection(profile)
         dismiss()
@@ -526,6 +595,11 @@ private struct EditConnectionSheet: View {
     @State private var database: String = ""
     @State private var username: String = ""
     @State private var password: String = ""
+    @State private var useSshTunnel: Bool = false
+    @State private var sshHost: String = ""
+    @State private var sshPort: String = "22"
+    @State private var sshUsername: String = ""
+    @State private var sshPassword: String = ""
     @State private var testState: TestState = .idle
 
     private enum TestState {
@@ -534,6 +608,14 @@ private struct EditConnectionSheet: View {
 
     private var resolvedPort: UInt32 {
         UInt32(port) ?? databaseDefaultPort(dbType: selectedType.toFFI)
+    }
+
+    private var resolvedSshPort: UInt32 {
+        UInt32(sshPort) ?? 22
+    }
+
+    private var supportsSshTunnel: Bool {
+        selectedType == .mysql || selectedType == .mariaDb
     }
 
     private var isValid: Bool {
@@ -556,6 +638,11 @@ private struct EditConnectionSheet: View {
             database = profile.database
             username = profile.username
             password = profile.password
+            useSshTunnel = profile.useSshTunnel
+            sshHost = profile.sshHost
+            sshPort = "\(profile.sshPort)"
+            sshUsername = profile.sshUsername
+            sshPassword = profile.sshPassword
             if profile.dbType == .sqlite {
                 filePath = profile.url.replacingOccurrences(of: "sqlite:", with: "")
             }
@@ -674,6 +761,11 @@ private struct EditConnectionSheet: View {
                                     .textFieldStyle(.roundedBorder)
                                     .font(.body.monospaced())
                             }
+
+                            if supportsSshTunnel {
+                                Divider().padding(.vertical, 4)
+                                editSshTunnelSection
+                            }
                         }
                     }
                 }
@@ -697,6 +789,47 @@ private struct EditConnectionSheet: View {
             }
             .padding(.horizontal, 20)
             .padding(.vertical, 10)
+        }
+    }
+
+    @ViewBuilder
+    private var editSshTunnelSection: some View {
+        Toggle(isOn: $useSshTunnel) {
+            HStack(spacing: 6) {
+                Image(systemName: "lock.shield")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                Text("Connect via SSH Tunnel")
+                    .font(.callout)
+            }
+        }
+        .toggleStyle(.switch)
+        .controlSize(.small)
+
+        if useSshTunnel {
+            HStack(spacing: 8) {
+                formField("SSH Host") {
+                    TextField("bastion.example.com", text: $sshHost)
+                        .textFieldStyle(.roundedBorder)
+                        .font(.body.monospaced())
+                }
+                formField("SSH Port") {
+                    TextField("22", text: $sshPort)
+                        .textFieldStyle(.roundedBorder)
+                        .frame(width: 70)
+                        .font(.body.monospaced())
+                }
+            }
+            formField("SSH Username") {
+                TextField("root", text: $sshUsername)
+                    .textFieldStyle(.roundedBorder)
+                    .font(.body.monospaced())
+            }
+            formField("SSH Password") {
+                SecureField("ssh password", text: $sshPassword)
+                    .textFieldStyle(.roundedBorder)
+                    .font(.body.monospaced())
+            }
         }
     }
 
@@ -763,7 +896,12 @@ private struct EditConnectionSheet: View {
                 port: resolvedPort,
                 database: database.isEmpty ? nil : database,
                 username: username.isEmpty ? nil : username,
-                password: password.isEmpty ? nil : password
+                password: password.isEmpty ? nil : password,
+                useSshTunnel: useSshTunnel && supportsSshTunnel,
+                sshHost: sshHost.isEmpty ? nil : sshHost,
+                sshPort: resolvedSshPort,
+                sshUsername: sshUsername.isEmpty ? nil : sshUsername,
+                sshPassword: sshPassword.isEmpty ? nil : sshPassword
             )
             testState = .success
         } catch {
@@ -783,6 +921,11 @@ private struct EditConnectionSheet: View {
         updated.database = database
         updated.username = username
         updated.password = password
+        updated.useSshTunnel = useSshTunnel && supportsSshTunnel
+        updated.sshHost = sshHost
+        updated.sshPort = resolvedSshPort
+        updated.sshUsername = sshUsername
+        updated.sshPassword = sshPassword
         vm.updateConnection(updated)
         dismiss()
     }

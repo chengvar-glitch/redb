@@ -144,6 +144,22 @@ struct SQLQueryView: View {
             } label: {
                 Label("Close", systemImage: "xmark")
             }
+
+            Divider()
+
+            Button {
+                vm.closeOtherQueryTabs(keeping: tab)
+            } label: {
+                Label("Close Others", systemImage: "xmark.square")
+            }
+            .disabled(vm.queryTabs.count <= 1)
+
+            Button {
+                vm.closeAllQueryTabs()
+            } label: {
+                Label("Close All", systemImage: "xmark.square.fill")
+            }
+            .disabled(vm.queryTabs.isEmpty)
         }
     }
 

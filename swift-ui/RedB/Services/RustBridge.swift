@@ -31,7 +31,12 @@ final class RustBridge: ObservableObject {
         database: String? = nil,
         username: String? = nil,
         password: String? = nil,
-        logPath: String? = nil
+        logPath: String? = nil,
+        useSshTunnel: Bool = false,
+        sshHost: String? = nil,
+        sshPort: UInt32? = nil,
+        sshUsername: String? = nil,
+        sshPassword: String? = nil
     ) async throws {
         let config = DatabaseConfig(
             dbType: dbType,
@@ -42,7 +47,12 @@ final class RustBridge: ObservableObject {
             username: username,
             password: password,
             maxConnections: 10,
-            logPath: logPath
+            logPath: logPath,
+            useSshTunnel: useSshTunnel,
+            sshHost: sshHost,
+            sshPort: sshPort,
+            sshUsername: sshUsername,
+            sshPassword: sshPassword
         )
         let mgr = DatabaseManager(config: config)
 
@@ -71,7 +81,12 @@ final class RustBridge: ObservableObject {
         port: UInt32? = nil,
         database: String? = nil,
         username: String? = nil,
-        password: String? = nil
+        password: String? = nil,
+        useSshTunnel: Bool = false,
+        sshHost: String? = nil,
+        sshPort: UInt32? = nil,
+        sshUsername: String? = nil,
+        sshPassword: String? = nil
     ) async throws {
         let config = DatabaseConfig(
             dbType: dbType,
@@ -82,7 +97,12 @@ final class RustBridge: ObservableObject {
             username: username,
             password: password,
             maxConnections: 1,
-            logPath: nil
+            logPath: nil,
+            useSshTunnel: useSshTunnel,
+            sshHost: sshHost,
+            sshPort: sshPort,
+            sshUsername: sshUsername,
+            sshPassword: sshPassword
         )
         let mgr = DatabaseManager(config: config)
         let queue = DispatchQueue(label: "com.redb.ffi.test", qos: .default)

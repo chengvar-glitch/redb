@@ -48,6 +48,12 @@ struct ConnectionProfile: Identifiable, Hashable {
     var password: String
     var lastConnected: Date?
 
+    var useSshTunnel: Bool
+    var sshHost: String
+    var sshPort: UInt32
+    var sshUsername: String
+    var sshPassword: String
+
     init(
         id: String = UUID().uuidString,
         name: String,
@@ -57,7 +63,12 @@ struct ConnectionProfile: Identifiable, Hashable {
         port: UInt32 = 0,
         database: String = "",
         username: String = "",
-        password: String = ""
+        password: String = "",
+        useSshTunnel: Bool = false,
+        sshHost: String = "",
+        sshPort: UInt32 = 22,
+        sshUsername: String = "",
+        sshPassword: String = ""
     ) {
         self.id = id
         self.name = name
@@ -68,6 +79,11 @@ struct ConnectionProfile: Identifiable, Hashable {
         self.database = database
         self.username = username
         self.password = password
+        self.useSshTunnel = useSshTunnel
+        self.sshHost = sshHost
+        self.sshPort = sshPort
+        self.sshUsername = sshUsername
+        self.sshPassword = sshPassword
     }
 
     var toConfig: DatabaseConfig {
@@ -80,7 +96,12 @@ struct ConnectionProfile: Identifiable, Hashable {
             username: username.isEmpty ? nil : username,
             password: password.isEmpty ? nil : password,
             maxConnections: 10,
-            logPath: nil
+            logPath: nil,
+            useSshTunnel: useSshTunnel,
+            sshHost: sshHost.isEmpty ? nil : sshHost,
+            sshPort: sshPort == 0 ? nil : sshPort,
+            sshUsername: sshUsername.isEmpty ? nil : sshUsername,
+            sshPassword: sshPassword.isEmpty ? nil : sshPassword
         )
     }
 
@@ -94,6 +115,11 @@ struct ConnectionProfile: Identifiable, Hashable {
         self.database = saved.config.database ?? ""
         self.username = saved.config.username ?? ""
         self.password = saved.config.password ?? ""
+        self.useSshTunnel = saved.config.useSshTunnel
+        self.sshHost = saved.config.sshHost ?? ""
+        self.sshPort = saved.config.sshPort ?? 22
+        self.sshUsername = saved.config.sshUsername ?? ""
+        self.sshPassword = saved.config.sshPassword ?? ""
     }
 }
 
@@ -311,7 +337,12 @@ final class DatabaseViewModel: ObservableObject {
                 database: profile.database.isEmpty ? nil : profile.database,
                 username: profile.username.isEmpty ? nil : profile.username,
                 password: profile.password.isEmpty ? nil : profile.password,
-                logPath: logPath
+                logPath: logPath,
+                useSshTunnel: profile.useSshTunnel,
+                sshHost: profile.sshHost.isEmpty ? nil : profile.sshHost,
+                sshPort: profile.sshPort == 0 ? nil : profile.sshPort,
+                sshUsername: profile.sshUsername.isEmpty ? nil : profile.sshUsername,
+                sshPassword: profile.sshPassword.isEmpty ? nil : profile.sshPassword
             )
             selectedConnection = profile
             updateLastConnected(profile)
@@ -418,6 +449,16 @@ final class DatabaseViewModel: ObservableObject {
         }
     }
 
+    func closeOtherQueryTabs(keeping tab: QueryTab) {
+        queryTabs.removeAll { $0.id != tab.id }
+        activeQueryTabId = tab.id
+    }
+
+    func closeAllQueryTabs() {
+        queryTabs.removeAll()
+        activeQueryTabId = nil
+    }
+
     func executeQuery() async {
         guard let tab = activeQueryTab else { return }
         let trimmed = tab.sqlInput.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -457,7 +498,12 @@ final class DatabaseViewModel: ObservableObject {
             }
         }
 
-        tab.queryLoadState = .success(results)
+        // Filter out empty results (control statements like SET/USE/BEGIN/COMMIT/ROLLBACK
+        // produce QueryResult with no columns, no rows, zero rows_affected — they
+        // should not occupy tabs in the result panel.
+        let nonEmpty = results.filter { !$0.columns.isEmpty || !$0.rows.isEmpty || $0.rowsAffected > 0 }
+
+        tab.queryLoadState = .success(nonEmpty.isEmpty ? results : nonEmpty)
 
         // Record table usage for auto-complete
         for stmt in statements {
@@ -531,5 +577,118 @@ final class DatabaseViewModel: ObservableObject {
                 _ = try? store?.saveCachedTables(id: conn.id, tables: updated)
             }
         }
+    }
+
+    // MARK: - Inline Editing
+
+    /// Build an UPDATE statement from a cell edit and execute it on the active connection.
+    func updateCell(tableName: String?, row: Int, col: Int, newValue: String,
+                    pkColumns: [Int], dataRows: [[CellValue]], columns: [ColumnInfo]) {
+        guard let table = tableName,
+              row < dataRows.count, col < dataRows[row].count else { return }
+
+        let colName = columns[col].name
+        let escapedCol = quoteColumn(colName)
+        let escapedTable = quoteColumn(table)
+
+        let setValue: String
+        if newValue == "NULL" || newValue == "null" {
+            setValue = "NULL"
+        } else {
+            let escaped = newValue.replacingOccurrences(of: "'", with: "''")
+            setValue = "'\(escaped)'"
+        }
+        let setClause = "\(escapedCol) = \(setValue)"
+
+        // Use PK columns if available; fall back to ALL columns for WHERE
+        let whereCols = pkColumns.isEmpty ? Array(0..<min(columns.count, dataRows[row].count)) : pkColumns
+        let conditions: [String] = whereCols.compactMap { idx in
+            guard idx < columns.count, row < dataRows.count, idx < dataRows[row].count else { return nil }
+            let colName = quoteColumn(columns[idx].name)
+            let colValue = dataRows[row][idx]
+            switch colValue {
+            case .null:
+                return "\(colName) IS NULL"
+            case .int(let v):
+                return "\(colName) = \(v)"
+            case .float(let v):
+                return "\(colName) = \(v)"
+            case .text(let v):
+                let escaped = v.replacingOccurrences(of: "'", with: "''")
+                return "\(colName) = '\(escaped)'"
+            case .blob:
+                return nil
+            }
+        }
+        guard !conditions.isEmpty else { return }
+
+        let whereClause = conditions.joined(separator: " AND ")
+        let sql = "UPDATE \(escapedTable) SET \(setClause) WHERE \(whereClause)"
+
+        Task {
+            await executeRaw(sql: sql)
+        }
+    }
+
+    /// Build DELETE statements for selected rows and execute on the active connection.
+    func deleteRows(rows: [Int], table: String,
+                    pkColumns: [Int], dataRows: [[CellValue]], columns: [ColumnInfo]) async {
+        guard !rows.isEmpty else { return }
+
+        let escapedTable = quoteColumn(table)
+
+        for row in rows {
+            guard row < dataRows.count else { continue }
+            // Use PK columns if available; fall back to ALL columns for WHERE
+            let whereCols = pkColumns.isEmpty ? Array(0..<min(columns.count, dataRows[row].count)) : pkColumns
+            let conditions: [String] = whereCols.compactMap { idx in
+                guard idx < columns.count, idx < dataRows[row].count else { return nil }
+                let colName = quoteColumn(columns[idx].name)
+                let colValue = dataRows[row][idx]
+                switch colValue {
+                case .null:
+                    return "\(colName) IS NULL"
+                case .int(let v):
+                    return "\(colName) = \(v)"
+                case .float(let v):
+                    return "\(colName) = \(v)"
+                case .text(let v):
+                    let escaped = v.replacingOccurrences(of: "'", with: "''")
+                    return "\(colName) = '\(escaped)'"
+                case .blob:
+                    return nil
+                }
+            }
+            guard !conditions.isEmpty else { continue }
+            let whereClause = conditions.joined(separator: " AND ")
+            let sql = "DELETE FROM \(escapedTable) WHERE \(whereClause)"
+            await executeRaw(sql: sql)
+        }
+    }
+
+    /// Execute a raw SQL statement (for inline edits/deletes).
+    private func executeRaw(sql: String) async {
+        do {
+            _ = try await bridge.executeQuery(sql)
+            // Refresh the current tab's query if active
+            if let tab = activeQueryTab {
+                let savedSql = tab.sqlInput
+                tab.sqlInput = savedSql
+                await executeQuery()
+            }
+        } catch {
+            print("[RedB] inline edit failed: \(error.localizedDescription)")
+        }
+    }
+
+    /// Quote an identifier for the current DB type.
+    private func quoteColumn(_ name: String) -> String {
+        let q: String
+        if selectedConnection?.dbType == .mysql || selectedConnection?.dbType == .mariaDb {
+            q = "`"
+        } else {
+            q = "\""
+        }
+        return "\(q)\(name)\(q)"
     }
 }

@@ -3,7 +3,11 @@ use std::time::Instant;
 use std::fs::{self, OpenOptions};
 use std::io::Write;
 
+use crate::sql::parser::strip_leading_comments;
 use crate::types::*;
+
+#[cfg(feature = "mysql")]
+use super::ssh_tunnel::SshTunnel;
 
 // ---------------------------------------------------------------------------
 // Internal connection enum
@@ -21,6 +25,7 @@ enum DbConnection {
     MySql {
         conn: mysql_async::Conn,
         runtime: tokio::runtime::Runtime,
+        _tunnel: Option<SshTunnel>,
     },
     #[cfg(feature = "sqlserver")]
     SqlServer {
@@ -132,14 +137,16 @@ impl DatabaseManager {
                         message: e.to_string(),
                     }
                 })?;
-                let opts = Self::build_mysql_opts(&self.config);
+
+                let (opts, tunnel) = Self::build_mysql_opts_with_tunnel(&self.config, &runtime)?;
+
                 let pool = mysql_async::Pool::new(opts);
                 let conn = runtime.block_on(pool.get_conn()).map_err(|e| {
                     DbError::ConnectionError {
                         message: e.to_string(),
                     }
                 })?;
-                DbConnection::MySql { conn, runtime }
+                DbConnection::MySql { conn, runtime, _tunnel: tunnel }
             }
             #[cfg(not(feature = "mysql"))]
             DatabaseType::MySql | DatabaseType::MariaDB => {
@@ -214,7 +221,7 @@ impl DatabaseManager {
                 Self::list_tables_postgres(client, runtime)
             }
             #[cfg(feature = "mysql")]
-            DbConnection::MySql { conn, runtime } => Self::list_tables_mysql(conn, runtime),
+            DbConnection::MySql { conn, runtime, .. } => Self::list_tables_mysql(conn, runtime),
             #[cfg(feature = "sqlserver")]
             DbConnection::SqlServer { client, runtime } => {
                 Self::list_tables_sqlserver(client, runtime)
@@ -271,13 +278,6 @@ impl DatabaseManager {
     pub fn execute_query(&self, sql: &str) -> Result<QueryResult, DbError> {
         let start = Instant::now();
 
-        // 控制语句：不产生结果集，不获取 DB 锁直接返回
-        let trimmed = sql.trim();
-        let first_word = trimmed.split_whitespace().next().unwrap_or("").to_uppercase();
-        if matches!(first_word.as_str(), "SET" | "USE" | "BEGIN" | "COMMIT" | "ROLLBACK") {
-            return Ok(QueryResult::empty());
-        }
-
         let mut guard = self.conn.lock().unwrap();
         let conn = guard.as_mut().ok_or(DbError::NotConnected)?;
 
@@ -289,7 +289,7 @@ impl DatabaseManager {
                 Self::execute_query_postgres(client, runtime, sql, start)
             }
             #[cfg(feature = "mysql")]
-            DbConnection::MySql { conn, runtime } => {
+            DbConnection::MySql { conn, runtime, .. } => {
                 Self::execute_query_mysql(conn, runtime, sql, start)
             }
             #[cfg(feature = "sqlserver")]
@@ -360,16 +360,44 @@ fn is_leap(year: i64) -> bool {
 
 impl DatabaseManager {
     #[cfg(feature = "mysql")]
-    fn build_mysql_opts(config: &DatabaseConfig) -> mysql_async::Opts {
-        let builder = mysql_async::OptsBuilder::default()
-            .ip_or_hostname(
+    fn build_mysql_opts_with_tunnel(
+        config: &DatabaseConfig,
+        runtime: &tokio::runtime::Runtime,
+    ) -> Result<(mysql_async::Opts, Option<SshTunnel>), DbError> {
+        let (host, port, tunnel) = if config.use_ssh_tunnel {
+            let ssh_host = config.ssh_host.clone().ok_or_else(|| DbError::ConnectionError {
+                message: "SSH tunnel enabled but ssh_host is empty".to_string(),
+            })?;
+            let ssh_port = config.ssh_port.unwrap_or(22) as u16;
+            let ssh_user = config.ssh_username.clone().unwrap_or_default();
+            let ssh_pass = config.ssh_password.clone().unwrap_or_default();
+            let target_host = config.host.clone().unwrap_or_else(|| "127.0.0.1".to_string());
+            let target_port = config.port.unwrap_or(3306) as u16;
+
+            let tunnel = runtime.block_on(SshTunnel::open(
+                ssh_host,
+                ssh_port,
+                ssh_user,
+                ssh_pass,
+                target_host,
+                target_port,
+            ))?;
+            ("127.0.0.1".to_string(), tunnel.local_port() as u32, Some(tunnel))
+        } else {
+            (
                 config.host.clone().unwrap_or_else(|| "127.0.0.1".to_string()),
+                config.port.unwrap_or(3306),
+                None,
             )
-            .tcp_port(config.port.unwrap_or(3306) as u16)
+        };
+
+        let builder = mysql_async::OptsBuilder::default()
+            .ip_or_hostname(host)
+            .tcp_port(port as u16)
             .user(config.username.clone())
             .pass(config.password.clone())
             .db_name(config.database.clone());
-        builder.into()
+        Ok((builder.into(), tunnel))
     }
 
     #[cfg(feature = "sqlserver")]
@@ -535,7 +563,8 @@ impl DatabaseManager {
     ) -> Result<QueryResult, DbError> {
         use rusqlite::types::ValueRef;
 
-        let sql_upper = sql.trim().to_uppercase();
+        let stripped = strip_leading_comments(sql);
+        let sql_upper = stripped.to_uppercase();
         let is_query = sql_upper.starts_with("SELECT")
             || sql_upper.starts_with("PRAGMA")
             || sql_upper.starts_with("WITH");
@@ -690,7 +719,8 @@ impl DatabaseManager {
     ) -> Result<QueryResult, DbError> {
         use tokio_postgres::types::Type;
 
-        let sql_upper = sql.trim().to_uppercase();
+        let stripped = strip_leading_comments(sql);
+        let sql_upper = stripped.to_uppercase();
         let is_query = sql_upper.starts_with("SELECT")
             || sql_upper.starts_with("WITH")
             || sql_upper.starts_with("EXPLAIN")
@@ -887,7 +917,8 @@ impl DatabaseManager {
         use mysql_async::prelude::Queryable;
         use std::fmt::Write;
 
-        let sql_upper = sql.trim().to_uppercase();
+        let stripped = strip_leading_comments(sql);
+        let sql_upper = stripped.to_uppercase();
         let is_query = sql_upper.starts_with("SELECT")
             || sql_upper.starts_with("SHOW")
             || sql_upper.starts_with("DESCRIBE")
@@ -1123,7 +1154,8 @@ impl DatabaseManager {
         sql: &str,
         start: Instant,
     ) -> Result<QueryResult, DbError> {
-        let sql_upper = sql.trim().to_uppercase();
+        let stripped = strip_leading_comments(sql);
+        let sql_upper = stripped.to_uppercase();
         let is_query = sql_upper.starts_with("SELECT")
             || sql_upper.starts_with("WITH")
             || sql_upper.starts_with("EXEC")
