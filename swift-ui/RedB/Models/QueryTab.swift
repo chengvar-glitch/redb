@@ -3,6 +3,7 @@ import SwiftUI
 class QueryTab: Identifiable, ObservableObject {
     let id = UUID()
     @Published var title: String
+    @Published var hasUnsavedEdits: Bool = false
     @Published var sqlInput: String = ""
     @Published var queryLoadState: LoadState<[QueryResult]> = .idle
     @Published var rowLimit: Int = 200

@@ -338,8 +338,7 @@ extension DataTable {
                 tableView: tableView
             )
             let isEditing = (editingCell?.row == row && editingCell?.col == colIdx)
-            let hasPending = pendingEdits.contains(where: { $0.row == row && $0.col == colIdx })
-            Self.applyCellHighlight(to: cell, isActiveCell: isActiveCell, isEditing: isEditing, hasPending: hasPending)
+            Self.applyCellHighlight(to: cell, isActiveCell: isActiveCell, isEditing: isEditing)
 
             if isEditing {
                 cell.textField?.isEditable = true
@@ -525,7 +524,7 @@ extension DataTable {
                     let isActive = Self.isActiveCell(row: cellRow, dataColIdx: dataColIdx, tableView: tableView)
                     let isEditing = editingCell?.row == cellRow && editingCell?.col == dataColIdx
                     let hasPending = pendingEdits.contains(where: { $0.row == cellRow && $0.col == dataColIdx })
-                    Self.applyCellHighlight(to: cell, isActiveCell: isActive, isEditing: isEditing, hasPending: hasPending)
+                    Self.applyCellHighlight(to: cell, isActiveCell: isActive, isEditing: isEditing)
                     // Update text to show pending value if any.
                     if hasPending, cellRow < parent.rows.count, dataColIdx < parent.rows[cellRow].count {
                         tf.stringValue = pendingDisplayValue(for: cellRow, col: dataColIdx, original: parent.rows[cellRow][dataColIdx])
@@ -545,20 +544,14 @@ extension DataTable {
             return clickedCol > 0 && (clickedCol - 1) == dataColIdx
         }
 
-        /// Color for cells that have a pending (unflushed) edit.
-        /// Warm accent so the user can see which cells they modified before saving.
-        private static let pendingEditColor =
-            NSColor.systemOrange.withAlphaComponent(0.12)
-
         /// Single source of truth for cell background tint. Called from `viewFor`
         /// when a cell is (re)created AND from `tableViewSelectionDidChange` to
-        /// re-tint existing on-screen cells. Extracted so this logic is unit-testable.
-        /// Priority: isEditing > isActiveCell > hasPending > default (no bg).
+        /// re-tint existing on-screen cells.
+        /// Priority: isEditing > isActiveCell > default (no bg).
         fileprivate static func applyCellHighlight(
             to cell: DataCell,
             isActiveCell: Bool,
-            isEditing: Bool,
-            hasPending: Bool = false
+            isEditing: Bool
         ) {
             guard let tf = cell.textField else { return }
             if isEditing {
@@ -569,11 +562,6 @@ extension DataTable {
             if isActiveCell {
                 tf.drawsBackground = true
                 tf.backgroundColor = NSColor.alternateSelectedControlColor
-                return
-            }
-            if hasPending {
-                tf.drawsBackground = true
-                tf.backgroundColor = Self.pendingEditColor
                 return
             }
             tf.drawsBackground = false

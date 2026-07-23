@@ -284,7 +284,10 @@ private struct ResultDataTable: View {
             onDataTableAction: { action in
                 handleDataTableAction(action)
             },
-            onPendingCountChanged: { pendingEditCount = $0 },
+            onPendingCountChanged: { count in
+                pendingEditCount = count
+                vm.activeQueryTab?.hasUnsavedEdits = count > 0
+            },
             saveCounter: saveCounter,
             revertCounter: revertCounter
         )

@@ -99,7 +99,7 @@ struct SQLQueryView: View {
     private func tabPill(_ tab: QueryTab) -> some View {
         let isActive = tab.id == vm.activeQueryTabId
         return HStack(spacing: 4) {
-            Text(tab.title)
+            Text(tab.hasUnsavedEdits ? "\(tab.title) *" : tab.title)
                 .font(.caption)
                 .fontWeight(isActive ? .semibold : .regular)
                 .lineLimit(1)
