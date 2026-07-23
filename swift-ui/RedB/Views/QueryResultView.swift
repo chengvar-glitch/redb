@@ -94,9 +94,6 @@ struct QueryResultView: View {
                 .font(.caption.weight(.semibold))
                 .foregroundColor(.orange)
                 .help("Revert all pending changes to original values")
-                Text("(\(pendingEditCount))")
-                    .foregroundColor(.orange)
-                    .font(.caption)
                 Divider().frame(height: 14)
             }
             Spacer()
