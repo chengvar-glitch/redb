@@ -31,6 +31,8 @@ struct DataTable: NSViewRepresentable {
     /// Called whenever the count of unflushed edits changes (0 = no pending).
     /// Parent can show/hide a save button based on this.
     var onPendingCountChanged: ((Int) -> Void)?
+    /// Called when the user checks/unchecks a row checkbox.
+    var onCheckedRowsChanged: ((Set<Int>) -> Void)?
     /// Increment to trigger a save from outside (e.g. toolbar button).
     var saveCounter: Int = 0
     /// Increment to revert all pending edits (discard & reload original values).
@@ -61,7 +63,7 @@ struct DataTable: NSViewRepresentable {
 
         // Row number column
         let rowCol = NSTableColumn(identifier: .rowNumber)
-        rowCol.title = "#"
+        rowCol.title = ""
         rowCol.width = 36
         rowCol.minWidth = 36
         rowCol.maxWidth = 36
@@ -216,6 +218,8 @@ extension DataTable {
         var lastSaveCounter: Int = 0
         /// Used to detect revert signal from parent (toolbar Revert button).
         var lastRevertCounter: Int = 0
+        /// Rows with checked checkboxes in the row-number column.
+        var checkedRows: Set<Int> = []
 
         fileprivate let footerView = SummaryFooterView()
 
@@ -309,18 +313,31 @@ extension DataTable {
             cell.textField?.delegate = self
 
             if identifier == .rowNumber {
-                cell.textField?.stringValue = "\(row + 1)"
-                cell.textField?.font = NSFont.monospacedSystemFont(ofSize: 10, weight: .regular)
-                cell.textField?.textColor = NSColor.tertiaryLabelColor
-                cell.textField?.alignment = .right
-                cell.textField?.isEditable = false
-                cell.textField?.isSelectable = false
+                let checkboxTag = 999
+                cell.textField?.isHidden = true
+                let checkbox: NSButton
+                if let existing = cell.viewWithTag(checkboxTag) as? NSButton {
+                    checkbox = existing
+                } else {
+                    checkbox = NSButton(checkboxWithTitle: "", target: self, action: #selector(toggleRowCheckbox(_:)))
+                    checkbox.tag = checkboxTag
+                    checkbox.translatesAutoresizingMaskIntoConstraints = false
+                    cell.addSubview(checkbox)
+                    NSLayoutConstraint.activate([
+                        checkbox.centerXAnchor.constraint(equalTo: cell.centerXAnchor),
+                        checkbox.centerYAnchor.constraint(equalTo: cell.centerYAnchor),
+                    ])
+                }
+                checkbox.state = checkedRows.contains(row) ? .on : .off
                 return cell
             }
+
+            cell.textField?.isHidden = false
 
             guard let idStr = identifier.rawValue.split(separator: "_").last,
                   let colIdx = Int(idStr),
                   colIdx < parent.rows[row].count else {
+                cell.textField?.isHidden = false
                 cell.textField?.stringValue = ""
                 cell.textField?.isEditable = false
                 return cell
@@ -411,6 +428,17 @@ extension DataTable {
             // After flush, pendingEdits = 0 — notify parent so save button hides.
             parent.onPendingCountChanged?(0)
             parent.onSave?()
+        }
+
+        @objc private func toggleRowCheckbox(_ sender: NSButton) {
+            guard let cell = sender.superview as? DataCell,
+                  let row = cell.row else { return }
+            if checkedRows.contains(row) {
+                checkedRows.remove(row)
+            } else {
+                checkedRows.insert(row)
+            }
+            parent.onCheckedRowsChanged?(checkedRows)
         }
 
         /// Discard all pending edits and reload cells with original values.
