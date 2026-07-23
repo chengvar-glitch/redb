@@ -510,31 +510,16 @@ extension DataTable {
             guard let tableView = notification.object as? NSTableView else { return }
             let selected = Set(tableView.selectedRowIndexes.filter { $0 < parent.rows.count })
             parent.onSelectedRowsChanged?(selected)
-            // viewFor only fires for newly visible cells; existing on-screen cells
-            // keep their previous drawsBackground/backgroundColor. Re-tint them so
-            // the previously selected cell drops its blue background.
-            refreshVisibleCellHighlights(tableView: tableView)
-        }
-
-        private func refreshVisibleCellHighlights(tableView: NSTableView) {
-            for row in 0..<tableView.numberOfRows {
-                for col in 0..<tableView.numberOfColumns {
-                    // Skip the row-number column (col 0) — it never tints.
-                    guard col > 0,
-                          let cell = tableView.view(
-                              atColumn: col, row: row, makeIfNecessary: false
-                          ) as? DataCell else { continue }
-                    let dataColIdx = col - 1
-                    let isActive = Self.isActiveCell(
-                        row: row,
-                        dataColIdx: dataColIdx,
-                        tableView: tableView
-                    )
-                    let isEditing = editingCell?.row == row
-                        && editingCell?.col == dataColIdx
-                    let hasPending = pendingEdits.contains(where: { $0.row == row && $0.col == dataColIdx })
-                    Self.applyCellHighlight(to: cell, isActiveCell: isActive, isEditing: isEditing, hasPending: hasPending)
-                }
+            // Reload all visible cells so viewFor re-applies highlight + text
+            // with the updated selection.  The old approach of iterating cell
+            // views via view(atColumn:row:makeIfNecessary:) missed cells that
+            // NSTableView recycled after editing ended, forcing a second click.
+            let visibleRect = tableView.visibleRect
+            let visibleRange = tableView.rows(in: visibleRect)
+            if visibleRange.length > 0 {
+                let rowIndexes = IndexSet(integersIn: visibleRange.lowerBound ..< visibleRange.upperBound + 1)
+                let colIndexes = IndexSet(1..<tableView.numberOfColumns)
+                tableView.reloadData(forRowIndexes: rowIndexes, columnIndexes: colIndexes)
             }
         }
 
