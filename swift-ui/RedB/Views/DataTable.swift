@@ -510,16 +510,28 @@ extension DataTable {
             guard let tableView = notification.object as? NSTableView else { return }
             let selected = Set(tableView.selectedRowIndexes.filter { $0 < parent.rows.count })
             parent.onSelectedRowsChanged?(selected)
-            // Reload all visible cells so viewFor re-applies highlight + text
-            // with the updated selection.  The old approach of iterating cell
-            // views via view(atColumn:row:makeIfNecessary:) missed cells that
-            // NSTableView recycled after editing ended, forcing a second click.
+            // Directly update every visible cell's background + text to reflect
+            // the new selection and any pending edits.  reloadData-based approaches
+            // can miss cells that NSTableView recycled after editing ended.
             let visibleRect = tableView.visibleRect
             let visibleRange = tableView.rows(in: visibleRect)
-            if visibleRange.length > 0 {
-                let rowIndexes = IndexSet(integersIn: visibleRange.lowerBound ..< visibleRange.upperBound + 1)
-                let colIndexes = IndexSet(1..<tableView.numberOfColumns)
-                tableView.reloadData(forRowIndexes: rowIndexes, columnIndexes: colIndexes)
+            guard visibleRange.length > 0 else { return }
+            for row in visibleRange.lowerBound ..< visibleRange.upperBound {
+                for col in 1 ..< tableView.numberOfColumns {
+                    guard let cell = tableView.view(atColumn: col, row: row, makeIfNecessary: true) as? DataCell,
+                          let tf = cell.textField,
+                          let cellRow = cell.row else { continue }
+                    let dataColIdx = col - 1
+                    let isActive = Self.isActiveCell(row: cellRow, dataColIdx: dataColIdx, tableView: tableView)
+                    let isEditing = editingCell?.row == cellRow && editingCell?.col == dataColIdx
+                    let hasPending = pendingEdits.contains(where: { $0.row == cellRow && $0.col == dataColIdx })
+                    Self.applyCellHighlight(to: cell, isActiveCell: isActive, isEditing: isEditing, hasPending: hasPending)
+                    // Update text to show pending value if any.
+                    if hasPending, cellRow < parent.rows.count, dataColIdx < parent.rows[cellRow].count {
+                        tf.stringValue = pendingDisplayValue(for: cellRow, col: dataColIdx, original: parent.rows[cellRow][dataColIdx])
+                    }
+                    cell.needsDisplay = true
+                }
             }
         }
 
