@@ -213,4 +213,54 @@ final class RustBridge: ObservableObject {
             }
         }
     }
+
+    // MARK: - Row Mutations (by primary key)
+
+    func updateRowByPrimaryKey(
+        table: String,
+        setColumn: String,
+        setValue: CellValue,
+        whereColumns: [String],
+        whereValues: [CellValue]
+    ) async throws -> QueryResult {
+        guard let mgr = manager else { throw BridgeError.notConnected }
+        return try await withCheckedThrowingContinuation { continuation in
+            ffiQueue.async {
+                do {
+                    let result = try mgr.updateRowByPrimaryKey(
+                        table: table,
+                        setColumn: setColumn,
+                        setValue: setValue,
+                        whereColumns: whereColumns,
+                        whereValues: whereValues
+                    )
+                    continuation.resume(returning: result)
+                } catch {
+                    continuation.resume(throwing: error)
+                }
+            }
+        }
+    }
+
+    func deleteRowByPrimaryKey(
+        table: String,
+        whereColumns: [String],
+        whereValues: [CellValue]
+    ) async throws -> QueryResult {
+        guard let mgr = manager else { throw BridgeError.notConnected }
+        return try await withCheckedThrowingContinuation { continuation in
+            ffiQueue.async {
+                do {
+                    let result = try mgr.deleteRowByPrimaryKey(
+                        table: table,
+                        whereColumns: whereColumns,
+                        whereValues: whereValues
+                    )
+                    continuation.resume(returning: result)
+                } catch {
+                    continuation.resume(throwing: error)
+                }
+            }
+        }
+    }
 }

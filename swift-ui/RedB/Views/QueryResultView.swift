@@ -1,27 +1,16 @@
 import SwiftUI
 
 private func extractTableName(from sql: String) -> String? {
-    let trimmed = sql.trimmingCharacters(in: .whitespacesAndNewlines)
-    let upper = trimmed.uppercased()
-    guard let fromRange = upper.range(of: " FROM ") else { return nil }
-    var afterFrom = String(trimmed[fromRange.upperBound...]).trimmingCharacters(in: .whitespaces)
-    if afterFrom.hasPrefix("\"") {
-        afterFrom = String(afterFrom.dropFirst())
-        if let idx = afterFrom.firstIndex(of: "\"") {
-            return String(afterFrom[..<idx])
-        }
-    } else {
-        let parts = afterFrom.split(whereSeparator: { $0.isWhitespace || $0 == "\n" || $0 == "," || $0 == ";" })
-        if let first = parts.first {
-            return String(first)
-        }
-    }
-    return nil
+    extractTableNames(sql: sql).first
 }
 
 struct QueryResultView: View {
     let result: QueryResult
     @EnvironmentObject var vm: DatabaseViewModel
+    @State private var mutationError: String? = nil
+    @State private var pendingEditCount = 0
+    @State private var saveCounter = 0
+    @State private var revertCounter = 0
 
     var body: some View {
         VStack(spacing: 0) {
@@ -31,17 +20,51 @@ struct QueryResultView: View {
                 .background(Color(nsColor: .windowBackgroundColor))
             Divider()
             if !result.columns.isEmpty {
-                ResultDataTable(columns: result.columns, rows: result.rows, baseSql: vm.activeQueryTab?.baseSql ?? "", rowLimit: vm.rowLimit)
-                    .frame(maxHeight: .infinity)
+                ResultDataTable(
+                    columns: result.columns, rows: result.rows,
+                    baseSql: vm.activeQueryTab?.baseSql ?? "", rowLimit: vm.rowLimit,
+                    pendingEditCount: $pendingEditCount,
+                    saveCounter: $saveCounter,
+                    revertCounter: $revertCounter
+                )
+                .frame(maxHeight: .infinity)
             } else if result.rowsAffected > 0 {
                 affectedOnlyState.frame(maxHeight: .infinity)
             }
             if !result.columns.isEmpty {
                 Divider()
+                if let err = mutationError {
+                    HStack(spacing: 8) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .foregroundColor(.white)
+                        Text(err)
+                            .font(.caption)
+                            .foregroundColor(.white)
+                            .lineLimit(1)
+                            .truncationMode(.tail)
+                        Spacer()
+                    }
+                    .padding(.horizontal, 12)
+                    .frame(height: 24)
+                    .background(Color.red.opacity(0.8))
+                    .transition(.opacity)
+                }
                 statusBar
             }
         }
         .frame(maxHeight: .infinity)
+        .onChange(of: vm.mutationError) { newVal in
+            guard let msg = newVal else { return }
+            withAnimation(.easeInOut(duration: 0.2)) {
+                mutationError = msg
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [weak vm] in
+                vm?.mutationError = nil
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    self.mutationError = nil
+                }
+            }
+        }
     }
 
     private var toolbarBar: some View {
@@ -49,9 +72,35 @@ struct QueryResultView: View {
             if result.rowsAffected > 0 {
                 Label("\(result.rowsAffected) affected", systemImage: "pencil")
             }
+            // Save button on the left — only when there are pending edits.
+            if !result.columns.isEmpty && pendingEditCount > 0 {
+                Button {
+                    saveCounter += 1
+                } label: {
+                    Label("Save", systemImage: "square.and.arrow.down")
+                }
+                .buttonStyle(.borderless)
+                .labelStyle(.titleAndIcon)
+                .font(.caption.weight(.semibold))
+                .foregroundColor(.accentColor)
+                .help("Save \(pendingEditCount) pending change(s) to the database")
+                Button {
+                    revertCounter += 1
+                } label: {
+                    Label("Revert", systemImage: "arrow.uturn.backward")
+                }
+                .buttonStyle(.borderless)
+                .labelStyle(.titleAndIcon)
+                .font(.caption.weight(.semibold))
+                .foregroundColor(.orange)
+                .help("Revert all pending changes to original values")
+                Text("(\(pendingEditCount))")
+                    .foregroundColor(.orange)
+                    .font(.caption)
+                Divider().frame(height: 14)
+            }
             Spacer()
             if !result.columns.isEmpty {
-                Divider().frame(height: 14)
                 Button { copyAsCSV() } label: { Image(systemName: "doc.on.doc") }
                     .buttonStyle(.borderless).help("Copy as CSV")
                 Button { copyAsInsert() } label: { Image(systemName: "list.clipboard") }
@@ -170,6 +219,9 @@ private struct ResultDataTable: View {
     let rows: [[CellValue]]
     let baseSql: String
     let rowLimit: Int
+    @Binding var pendingEditCount: Int
+    @Binding var saveCounter: Int
+    @Binding var revertCounter: Int
 
     @EnvironmentObject var vm: DatabaseViewModel
     @State private var lazyRows: [[CellValue]] = []
@@ -234,7 +286,10 @@ private struct ResultDataTable: View {
             },
             onDataTableAction: { action in
                 handleDataTableAction(action)
-            }
+            },
+            onPendingCountChanged: { pendingEditCount = $0 },
+            saveCounter: saveCounter,
+            revertCounter: revertCounter
         )
         .onAppear {
             lazyRows = rows; lazyOffset = rows.count

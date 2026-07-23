@@ -781,6 +781,8 @@ public protocol DatabaseManagerProtocol : AnyObject {
     
     func currentDatabase() throws  -> String
     
+    func deleteRowByPrimaryKey(table: String, whereColumns: [String], whereValues: [CellValue]) throws  -> QueryResult
+    
     func disconnect() throws 
     
     func executeQuery(sql: String) throws  -> QueryResult
@@ -792,6 +794,8 @@ public protocol DatabaseManagerProtocol : AnyObject {
     func quickView(tableName: String, rowLimit: UInt32) throws  -> QueryResult
     
     func status()  -> ConnStatus
+    
+    func updateRowByPrimaryKey(table: String, setColumn: String, setValue: CellValue, whereColumns: [String], whereValues: [CellValue]) throws  -> QueryResult
     
 }
 
@@ -870,6 +874,16 @@ open func currentDatabase()throws  -> String {
 })
 }
     
+open func deleteRowByPrimaryKey(table: String, whereColumns: [String], whereValues: [CellValue])throws  -> QueryResult {
+    return try  FfiConverterTypeQueryResult.lift(try rustCallWithError(FfiConverterTypeDbError.lift) {
+    uniffi_redb_core_fn_method_databasemanager_delete_row_by_primary_key(self.uniffiClonePointer(),
+        FfiConverterString.lower(table),
+        FfiConverterSequenceString.lower(whereColumns),
+        FfiConverterSequenceTypeCellValue.lower(whereValues),$0
+    )
+})
+}
+    
 open func disconnect()throws  {try rustCallWithError(FfiConverterTypeDbError.lift) {
     uniffi_redb_core_fn_method_databasemanager_disconnect(self.uniffiClonePointer(),$0
     )
@@ -910,6 +924,18 @@ open func quickView(tableName: String, rowLimit: UInt32)throws  -> QueryResult {
 open func status() -> ConnStatus {
     return try!  FfiConverterTypeConnStatus.lift(try! rustCall() {
     uniffi_redb_core_fn_method_databasemanager_status(self.uniffiClonePointer(),$0
+    )
+})
+}
+    
+open func updateRowByPrimaryKey(table: String, setColumn: String, setValue: CellValue, whereColumns: [String], whereValues: [CellValue])throws  -> QueryResult {
+    return try  FfiConverterTypeQueryResult.lift(try rustCallWithError(FfiConverterTypeDbError.lift) {
+    uniffi_redb_core_fn_method_databasemanager_update_row_by_primary_key(self.uniffiClonePointer(),
+        FfiConverterString.lower(table),
+        FfiConverterString.lower(setColumn),
+        FfiConverterTypeCellValue.lower(setValue),
+        FfiConverterSequenceString.lower(whereColumns),
+        FfiConverterSequenceTypeCellValue.lower(whereValues),$0
     )
 })
 }
@@ -2619,6 +2645,15 @@ public func analyzeSqlContext(sql: String, cursor: UInt64) -> SqlContext {
     )
 })
 }
+public func buildQuickViewSql(dbType: DatabaseType, table: String, rowLimit: UInt32)throws  -> String {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeDbError.lift) {
+    uniffi_redb_core_fn_func_build_quick_view_sql(
+        FfiConverterTypeDatabaseType.lower(dbType),
+        FfiConverterString.lower(table),
+        FfiConverterUInt32.lower(rowLimit),$0
+    )
+})
+}
 public func createDatabaseManager(config: DatabaseConfig) -> DatabaseManager {
     return try!  FfiConverterTypeDatabaseManager.lift(try! rustCall() {
     uniffi_redb_core_fn_func_create_database_manager(
@@ -2673,6 +2708,9 @@ private var initializationResult: InitializationResult = {
     if (uniffi_redb_core_checksum_func_analyze_sql_context() != 6154) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_redb_core_checksum_func_build_quick_view_sql() != 32162) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_redb_core_checksum_func_create_database_manager() != 16579) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -2709,6 +2747,9 @@ private var initializationResult: InitializationResult = {
     if (uniffi_redb_core_checksum_method_databasemanager_current_database() != 23213) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_redb_core_checksum_method_databasemanager_delete_row_by_primary_key() != 41928) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_redb_core_checksum_method_databasemanager_disconnect() != 9018) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -2725,6 +2766,9 @@ private var initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_redb_core_checksum_method_databasemanager_status() != 44177) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_redb_core_checksum_method_databasemanager_update_row_by_primary_key() != 45437) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_redb_core_checksum_method_querystore_delete_saved_query() != 30924) {

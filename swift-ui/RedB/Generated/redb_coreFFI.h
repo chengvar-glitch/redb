@@ -316,6 +316,11 @@ void uniffi_redb_core_fn_method_databasemanager_connect(void*_Nonnull ptr, RustC
 RustBuffer uniffi_redb_core_fn_method_databasemanager_current_database(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_REDB_CORE_FN_METHOD_DATABASEMANAGER_DELETE_ROW_BY_PRIMARY_KEY
+#define UNIFFI_FFIDEF_UNIFFI_REDB_CORE_FN_METHOD_DATABASEMANAGER_DELETE_ROW_BY_PRIMARY_KEY
+RustBuffer uniffi_redb_core_fn_method_databasemanager_delete_row_by_primary_key(void*_Nonnull ptr, RustBuffer table, RustBuffer where_columns, RustBuffer where_values, RustCallStatus *_Nonnull out_status
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_REDB_CORE_FN_METHOD_DATABASEMANAGER_DISCONNECT
 #define UNIFFI_FFIDEF_UNIFFI_REDB_CORE_FN_METHOD_DATABASEMANAGER_DISCONNECT
 void uniffi_redb_core_fn_method_databasemanager_disconnect(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
@@ -344,6 +349,11 @@ RustBuffer uniffi_redb_core_fn_method_databasemanager_quick_view(void*_Nonnull p
 #ifndef UNIFFI_FFIDEF_UNIFFI_REDB_CORE_FN_METHOD_DATABASEMANAGER_STATUS
 #define UNIFFI_FFIDEF_UNIFFI_REDB_CORE_FN_METHOD_DATABASEMANAGER_STATUS
 RustBuffer uniffi_redb_core_fn_method_databasemanager_status(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_REDB_CORE_FN_METHOD_DATABASEMANAGER_UPDATE_ROW_BY_PRIMARY_KEY
+#define UNIFFI_FFIDEF_UNIFFI_REDB_CORE_FN_METHOD_DATABASEMANAGER_UPDATE_ROW_BY_PRIMARY_KEY
+RustBuffer uniffi_redb_core_fn_method_databasemanager_update_row_by_primary_key(void*_Nonnull ptr, RustBuffer table, RustBuffer set_column, RustBuffer set_value, RustBuffer where_columns, RustBuffer where_values, RustCallStatus *_Nonnull out_status
 );
 #endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_REDB_CORE_FN_CLONE_QUERYSTORE
@@ -394,6 +404,11 @@ void uniffi_redb_core_fn_method_querystore_save_query(void*_Nonnull ptr, RustBuf
 #ifndef UNIFFI_FFIDEF_UNIFFI_REDB_CORE_FN_FUNC_ANALYZE_SQL_CONTEXT
 #define UNIFFI_FFIDEF_UNIFFI_REDB_CORE_FN_FUNC_ANALYZE_SQL_CONTEXT
 RustBuffer uniffi_redb_core_fn_func_analyze_sql_context(RustBuffer sql, uint64_t cursor, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_REDB_CORE_FN_FUNC_BUILD_QUICK_VIEW_SQL
+#define UNIFFI_FFIDEF_UNIFFI_REDB_CORE_FN_FUNC_BUILD_QUICK_VIEW_SQL
+RustBuffer uniffi_redb_core_fn_func_build_quick_view_sql(RustBuffer db_type, RustBuffer table, uint32_t row_limit, RustCallStatus *_Nonnull out_status
 );
 #endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_REDB_CORE_FN_FUNC_CREATE_DATABASE_MANAGER
@@ -707,6 +722,12 @@ uint16_t uniffi_redb_core_checksum_func_analyze_sql_context(void
     
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_REDB_CORE_CHECKSUM_FUNC_BUILD_QUICK_VIEW_SQL
+#define UNIFFI_FFIDEF_UNIFFI_REDB_CORE_CHECKSUM_FUNC_BUILD_QUICK_VIEW_SQL
+uint16_t uniffi_redb_core_checksum_func_build_quick_view_sql(void
+    
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_REDB_CORE_CHECKSUM_FUNC_CREATE_DATABASE_MANAGER
 #define UNIFFI_FFIDEF_UNIFFI_REDB_CORE_CHECKSUM_FUNC_CREATE_DATABASE_MANAGER
 uint16_t uniffi_redb_core_checksum_func_create_database_manager(void
@@ -779,6 +800,12 @@ uint16_t uniffi_redb_core_checksum_method_databasemanager_current_database(void
     
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_REDB_CORE_CHECKSUM_METHOD_DATABASEMANAGER_DELETE_ROW_BY_PRIMARY_KEY
+#define UNIFFI_FFIDEF_UNIFFI_REDB_CORE_CHECKSUM_METHOD_DATABASEMANAGER_DELETE_ROW_BY_PRIMARY_KEY
+uint16_t uniffi_redb_core_checksum_method_databasemanager_delete_row_by_primary_key(void
+    
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_REDB_CORE_CHECKSUM_METHOD_DATABASEMANAGER_DISCONNECT
 #define UNIFFI_FFIDEF_UNIFFI_REDB_CORE_CHECKSUM_METHOD_DATABASEMANAGER_DISCONNECT
 uint16_t uniffi_redb_core_checksum_method_databasemanager_disconnect(void
@@ -812,6 +839,12 @@ uint16_t uniffi_redb_core_checksum_method_databasemanager_quick_view(void
 #ifndef UNIFFI_FFIDEF_UNIFFI_REDB_CORE_CHECKSUM_METHOD_DATABASEMANAGER_STATUS
 #define UNIFFI_FFIDEF_UNIFFI_REDB_CORE_CHECKSUM_METHOD_DATABASEMANAGER_STATUS
 uint16_t uniffi_redb_core_checksum_method_databasemanager_status(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_REDB_CORE_CHECKSUM_METHOD_DATABASEMANAGER_UPDATE_ROW_BY_PRIMARY_KEY
+#define UNIFFI_FFIDEF_UNIFFI_REDB_CORE_CHECKSUM_METHOD_DATABASEMANAGER_UPDATE_ROW_BY_PRIMARY_KEY
+uint16_t uniffi_redb_core_checksum_method_databasemanager_update_row_by_primary_key(void
     
 );
 #endif

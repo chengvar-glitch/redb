@@ -259,6 +259,7 @@ final class DatabaseViewModel: ObservableObject {
     // -- Connection state --
     @Published var isConnecting: Bool = false
     @Published var connectionError: String?
+    @Published var mutationError: String?
 
     private var cancellables = Set<AnyCancellable>()
 
@@ -546,10 +547,19 @@ final class DatabaseViewModel: ObservableObject {
     // MARK: - Quick View
 
     func quickView(table: TableInfo) async {
-        let q = selectedConnection?.dbType == .mysql || selectedConnection?.dbType == .mariaDb ? "" : "\""
-        let sql = "SELECT * FROM \(q)\(table.name)\(q) LIMIT \(rowLimit);"
-        guard let tab = newQueryTab(sql: sql) else { return }
+        guard let dbType = selectedConnection?.dbType.toFFI else { return }
+        let displaySql: String
+        let baseSql: String
+        do {
+            displaySql = try buildQuickViewSql(dbType: dbType, table: table.name, rowLimit: UInt32(rowLimit)) + ";"
+            baseSql = try buildQuickViewSql(dbType: dbType, table: table.name, rowLimit: 0)
+        } catch {
+            print("[RedB] quickView SQL build failed: \(error.localizedDescription)")
+            return
+        }
+        guard let tab = newQueryTab(sql: displaySql) else { return }
         tab.title = table.name
+        tab.baseSql = baseSql
         // quick view 查询几乎瞬时，不设 .loading 避免闪烁
         let result: QueryResult
         do {
@@ -581,114 +591,73 @@ final class DatabaseViewModel: ObservableObject {
 
     // MARK: - Inline Editing
 
-    /// Build an UPDATE statement from a cell edit and execute it on the active connection.
+    /// Commit a single-cell edit via core FFI. UI layer never constructs SQL.
     func updateCell(tableName: String?, row: Int, col: Int, newValue: String,
                     pkColumns: [Int], dataRows: [[CellValue]], columns: [ColumnInfo]) {
         guard let table = tableName,
-              row < dataRows.count, col < dataRows[row].count else { return }
+              row < dataRows.count, col < dataRows[row].count,
+              col < columns.count else { return }
 
-        let colName = columns[col].name
-        let escapedCol = quoteColumn(colName)
-        let escapedTable = quoteColumn(table)
+        let setValue: CellValue = (newValue == "NULL" || newValue == "null") ? .null : .text(newValue)
 
-        let setValue: String
-        if newValue == "NULL" || newValue == "null" {
-            setValue = "NULL"
-        } else {
-            let escaped = newValue.replacingOccurrences(of: "'", with: "''")
-            setValue = "'\(escaped)'"
-        }
-        let setClause = "\(escapedCol) = \(setValue)"
-
-        // Use PK columns if available; fall back to ALL columns for WHERE
         let whereCols = pkColumns.isEmpty ? Array(0..<min(columns.count, dataRows[row].count)) : pkColumns
-        let conditions: [String] = whereCols.compactMap { idx in
-            guard idx < columns.count, row < dataRows.count, idx < dataRows[row].count else { return nil }
-            let colName = quoteColumn(columns[idx].name)
-            let colValue = dataRows[row][idx]
-            switch colValue {
-            case .null:
-                return "\(colName) IS NULL"
-            case .int(let v):
-                return "\(colName) = \(v)"
-            case .float(let v):
-                return "\(colName) = \(v)"
-            case .text(let v):
-                let escaped = v.replacingOccurrences(of: "'", with: "''")
-                return "\(colName) = '\(escaped)'"
-            case .blob:
-                return nil
-            }
+        let (whereNames, whereVals) = whereCols.reduce(into: (names: [String](), values: [CellValue]())) { acc, idx in
+            guard idx < columns.count, idx < dataRows[row].count else { return }
+            if case .blob = dataRows[row][idx] { return }
+            acc.names.append(columns[idx].name)
+            acc.values.append(dataRows[row][idx])
         }
-        guard !conditions.isEmpty else { return }
-
-        let whereClause = conditions.joined(separator: " AND ")
-        let sql = "UPDATE \(escapedTable) SET \(setClause) WHERE \(whereClause)"
+        guard !whereNames.isEmpty else { return }
 
         Task {
-            await executeRaw(sql: sql)
+            await executeRowMutation {
+                _ = try await self.bridge.updateRowByPrimaryKey(
+                    table: table,
+                    setColumn: columns[col].name,
+                    setValue: setValue,
+                    whereColumns: whereNames,
+                    whereValues: whereVals
+                )
+            }
         }
     }
 
-    /// Build DELETE statements for selected rows and execute on the active connection.
+    /// Delete selected rows via core FFI. One FFI call per row (composite PK safe).
     func deleteRows(rows: [Int], table: String,
                     pkColumns: [Int], dataRows: [[CellValue]], columns: [ColumnInfo]) async {
         guard !rows.isEmpty else { return }
 
-        let escapedTable = quoteColumn(table)
-
         for row in rows {
             guard row < dataRows.count else { continue }
-            // Use PK columns if available; fall back to ALL columns for WHERE
             let whereCols = pkColumns.isEmpty ? Array(0..<min(columns.count, dataRows[row].count)) : pkColumns
-            let conditions: [String] = whereCols.compactMap { idx in
-                guard idx < columns.count, idx < dataRows[row].count else { return nil }
-                let colName = quoteColumn(columns[idx].name)
-                let colValue = dataRows[row][idx]
-                switch colValue {
-                case .null:
-                    return "\(colName) IS NULL"
-                case .int(let v):
-                    return "\(colName) = \(v)"
-                case .float(let v):
-                    return "\(colName) = \(v)"
-                case .text(let v):
-                    let escaped = v.replacingOccurrences(of: "'", with: "''")
-                    return "\(colName) = '\(escaped)'"
-                case .blob:
-                    return nil
-                }
+            let (whereNames, whereVals) = whereCols.reduce(into: (names: [String](), values: [CellValue]())) { acc, idx in
+                guard idx < columns.count, idx < dataRows[row].count else { return }
+                if case .blob = dataRows[row][idx] { return }
+                acc.names.append(columns[idx].name)
+                acc.values.append(dataRows[row][idx])
             }
-            guard !conditions.isEmpty else { continue }
-            let whereClause = conditions.joined(separator: " AND ")
-            let sql = "DELETE FROM \(escapedTable) WHERE \(whereClause)"
-            await executeRaw(sql: sql)
+            guard !whereNames.isEmpty else { continue }
+            await executeRowMutation {
+                _ = try await self.bridge.deleteRowByPrimaryKey(
+                    table: table,
+                    whereColumns: whereNames,
+                    whereValues: whereVals
+                )
+            }
         }
     }
 
-    /// Execute a raw SQL statement (for inline edits/deletes).
-    private func executeRaw(sql: String) async {
+    private func executeRowMutation(_ op: () async throws -> Void) async {
         do {
-            _ = try await bridge.executeQuery(sql)
-            // Refresh the current tab's query if active
-            if let tab = activeQueryTab {
-                let savedSql = tab.sqlInput
-                tab.sqlInput = savedSql
+            try await op()
+            mutationError = nil
+            if activeQueryTab != nil {
                 await executeQuery()
             }
         } catch {
-            print("[RedB] inline edit failed: \(error.localizedDescription)")
+            let msg = error.localizedDescription
+            mutationError = msg
+            print("[RedB] row mutation failed: \(msg)")
         }
-    }
-
-    /// Quote an identifier for the current DB type.
-    private func quoteColumn(_ name: String) -> String {
-        let q: String
-        if selectedConnection?.dbType == .mysql || selectedConnection?.dbType == .mariaDb {
-            q = "`"
-        } else {
-            q = "\""
-        }
-        return "\(q)\(name)\(q)"
     }
 }
