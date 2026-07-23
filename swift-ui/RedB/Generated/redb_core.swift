@@ -1181,14 +1181,16 @@ public struct ColumnInfo {
     public var dataType: String
     public var nullable: Bool
     public var isPrimaryKey: Bool
+    public var isAutoIncrement: Bool
 
     // Default memberwise initializers are never public by default, so we
     // declare one manually.
-    public init(name: String, dataType: String, nullable: Bool, isPrimaryKey: Bool) {
+    public init(name: String, dataType: String, nullable: Bool, isPrimaryKey: Bool, isAutoIncrement: Bool) {
         self.name = name
         self.dataType = dataType
         self.nullable = nullable
         self.isPrimaryKey = isPrimaryKey
+        self.isAutoIncrement = isAutoIncrement
     }
 }
 
@@ -1208,6 +1210,9 @@ extension ColumnInfo: Equatable, Hashable {
         if lhs.isPrimaryKey != rhs.isPrimaryKey {
             return false
         }
+        if lhs.isAutoIncrement != rhs.isAutoIncrement {
+            return false
+        }
         return true
     }
 
@@ -1216,6 +1221,7 @@ extension ColumnInfo: Equatable, Hashable {
         hasher.combine(dataType)
         hasher.combine(nullable)
         hasher.combine(isPrimaryKey)
+        hasher.combine(isAutoIncrement)
     }
 }
 
@@ -1230,7 +1236,8 @@ public struct FfiConverterTypeColumnInfo: FfiConverterRustBuffer {
                 name: FfiConverterString.read(from: &buf), 
                 dataType: FfiConverterString.read(from: &buf), 
                 nullable: FfiConverterBool.read(from: &buf), 
-                isPrimaryKey: FfiConverterBool.read(from: &buf)
+                isPrimaryKey: FfiConverterBool.read(from: &buf), 
+                isAutoIncrement: FfiConverterBool.read(from: &buf)
         )
     }
 
@@ -1239,6 +1246,7 @@ public struct FfiConverterTypeColumnInfo: FfiConverterRustBuffer {
         FfiConverterString.write(value.dataType, into: &buf)
         FfiConverterBool.write(value.nullable, into: &buf)
         FfiConverterBool.write(value.isPrimaryKey, into: &buf)
+        FfiConverterBool.write(value.isAutoIncrement, into: &buf)
     }
 }
 

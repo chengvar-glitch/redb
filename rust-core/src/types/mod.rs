@@ -52,6 +52,7 @@ pub struct ColumnInfo {
     pub data_type: String,
     pub nullable: bool,
     pub is_primary_key: bool,
+    pub is_auto_increment: bool,
 }
 
 #[derive(Debug, Clone, uniffi::Record)]

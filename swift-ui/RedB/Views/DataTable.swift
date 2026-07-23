@@ -20,6 +20,7 @@ struct DataTable: NSViewRepresentable {
     let sortDescending: Bool
     let selectedRows: Set<Int>
     let pkColumnIndices: [Int]
+    let autoIncrementColIndices: [Int]
     let tableName: String?
 
     var onSort: ((Int, Bool) -> Void)?
@@ -369,8 +370,14 @@ extension DataTable {
             // If this cell has a pending edit (not yet flushed to DB), show the
             // typed value so the user sees what they entered before pressing Enter.
             cell.textField?.stringValue = pendingDisplayValue(for: row, col: colIdx, original: value)
+            // For auto-increment columns with null values, show "(auto)" indicator.
+            if value == .null, parent.autoIncrementColIndices.contains(colIdx), !pendingEdits.contains(where: { $0.row == row && $0.col == colIdx }) {
+                cell.textField?.stringValue = "(auto)"
+                cell.textField?.textColor = NSColor.tertiaryLabelColor
+            } else {
+                cell.textField?.textColor = cellForegroundColor(value)
+            }
             cell.textField?.font = NSFont.monospacedSystemFont(ofSize: 11, weight: .regular)
-            cell.textField?.textColor = cellForegroundColor(value)
             cell.textField?.alignment = cellAlignment(value)
 
             return cell

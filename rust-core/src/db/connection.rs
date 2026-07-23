@@ -617,6 +617,12 @@ impl DatabaseManager {
                     data_type: row.get::<_, String>(2).unwrap_or_default(),
                     nullable: row.get::<_, i32>(3).unwrap_or(1) != 0,
                     is_primary_key: row.get::<_, i32>(5).unwrap_or(0) != 0,
+                    // SQLite: INTEGER PRIMARY KEY → auto-increment
+                    is_auto_increment: {
+                        let pk: bool = row.get::<_, i32>(5).unwrap_or(0) != 0;
+                        let dtype: String = row.get::<_, String>(2).unwrap_or_default();
+                        pk && dtype.to_uppercase().contains("INT")
+                    },
                 })
             })
             .map_err(|e| DbError::QueryError {
@@ -650,6 +656,7 @@ impl DatabaseManager {
             let columns: Vec<ColumnInfo> = (0..col_count)
                 .map(|i| ColumnInfo {
                 is_primary_key: false,
+                    is_auto_increment: false,
                     name: stmt.column_name(i).unwrap_or("?").to_string(),
                     data_type: String::new(),
                     nullable: true,
@@ -810,6 +817,7 @@ impl DatabaseManager {
                 let nullable: String = row.get(2);
                 ColumnInfo {
                 is_primary_key: false,
+                    is_auto_increment: false,
                     name: row.get(0),
                     data_type: row.get(1),
                     nullable: nullable == "YES",
@@ -856,6 +864,7 @@ impl DatabaseManager {
             let columns: Vec<ColumnInfo> = (0..col_count)
                 .map(|i| ColumnInfo {
                 is_primary_key: false,
+                    is_auto_increment: false,
                     name: result[0].columns()[i].name().to_string(),
                     data_type: result[0].columns()[i].type_().to_string(),
                     nullable: true,
@@ -1051,6 +1060,7 @@ impl DatabaseManager {
             .iter()
             .map(|row| ColumnInfo {
                 is_primary_key: false,
+                    is_auto_increment: false,
                 name: row.get::<String, usize>(0).unwrap_or_default(),
                 data_type: row.get::<String, usize>(1).unwrap_or_default(),
                 nullable: row
@@ -1098,6 +1108,7 @@ impl DatabaseManager {
                                     let _ = write!(type_str, "{:?}", c.column_type());
                                     ColumnInfo {
                 is_primary_key: false,
+                    is_auto_increment: false,
                                         name: c.name_str().to_string(),
                                         data_type: type_str,
                                         nullable: false,
@@ -1310,6 +1321,7 @@ impl DatabaseManager {
                     == "YES";
                 columns.push(ColumnInfo {
                 is_primary_key: false,
+                    is_auto_increment: false,
                     name,
                     data_type,
                     nullable,
@@ -1385,6 +1397,7 @@ impl DatabaseManager {
             let columns: Vec<ColumnInfo> = (0..col_count)
                 .map(|i| ColumnInfo {
                 is_primary_key: false,
+                    is_auto_increment: false,
                     name: format!("col_{i}"),
                     data_type: String::new(),
                     nullable: true,

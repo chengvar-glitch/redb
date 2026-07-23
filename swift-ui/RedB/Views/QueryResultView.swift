@@ -11,6 +11,12 @@ struct QueryResultView: View {
     @State private var pendingEditCount = 0
     @State private var saveCounter = 0
     @State private var revertCounter = 0
+    @State private var refreshCounter = 0
+    @State private var insertRowCounter = 0
+
+    private var tableName: String? {
+        extractTableName(from: vm.activeQueryTab?.baseSql ?? "")
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -25,7 +31,9 @@ struct QueryResultView: View {
                     baseSql: vm.activeQueryTab?.baseSql ?? "", rowLimit: vm.rowLimit,
                     pendingEditCount: $pendingEditCount,
                     saveCounter: $saveCounter,
-                    revertCounter: $revertCounter
+                    revertCounter: $revertCounter,
+                    refreshCounter: $refreshCounter,
+                    insertRowCounter: $insertRowCounter
                 )
                 .frame(maxHeight: .infinity)
             } else if result.rowsAffected > 0 {
@@ -65,6 +73,9 @@ struct QueryResultView: View {
                 }
             }
         }
+        .onChange(of: refreshCounter) { _ in
+            Task { await vm.executeQuery() }
+        }
     }
 
     private var toolbarBar: some View {
@@ -72,8 +83,8 @@ struct QueryResultView: View {
             if result.rowsAffected > 0 {
                 Label("\(result.rowsAffected) affected", systemImage: "pencil")
             }
-            // Save button on the left — only when there are pending edits.
-            if !result.columns.isEmpty && pendingEditCount > 0 {
+            // Left-side action buttons
+            if !result.columns.isEmpty {
                 Button {
                     saveCounter += 1
                 } label: {
@@ -82,8 +93,10 @@ struct QueryResultView: View {
                 .buttonStyle(.borderless)
                 .labelStyle(.titleAndIcon)
                 .font(.caption.weight(.semibold))
-                .foregroundColor(.accentColor)
-                .help("Save \(pendingEditCount) pending change(s) to the database")
+                .foregroundColor(pendingEditCount > 0 ? .accentColor : .secondary)
+                .disabled(pendingEditCount == 0)
+                .help("Save pending changes to the database")
+
                 Button {
                     revertCounter += 1
                 } label: {
@@ -92,8 +105,34 @@ struct QueryResultView: View {
                 .buttonStyle(.borderless)
                 .labelStyle(.titleAndIcon)
                 .font(.caption.weight(.semibold))
-                .foregroundColor(.orange)
-                .help("Revert all pending changes to original values")
+                .foregroundColor(pendingEditCount > 0 ? .orange : .secondary)
+                .disabled(pendingEditCount == 0)
+                .help("Revert all pending changes")
+
+                Button {
+                    refreshCounter += 1
+                } label: {
+                    Label("Refresh", systemImage: "arrow.clockwise")
+                }
+                .buttonStyle(.borderless)
+                .labelStyle(.titleAndIcon)
+                .font(.caption.weight(.semibold))
+                .foregroundColor(.accentColor)
+                .help("Re-run the current query")
+
+                if tableName != nil {
+                    Button {
+                        insertRowCounter += 1
+                    } label: {
+                        Label("Insert", systemImage: "plus.circle")
+                    }
+                    .buttonStyle(.borderless)
+                    .labelStyle(.titleAndIcon)
+                    .font(.caption.weight(.semibold))
+                    .foregroundColor(.accentColor)
+                    .help("Insert a new row")
+                }
+
                 Divider().frame(height: 14)
             }
             Spacer()
@@ -219,6 +258,8 @@ private struct ResultDataTable: View {
     @Binding var pendingEditCount: Int
     @Binding var saveCounter: Int
     @Binding var revertCounter: Int
+    @Binding var refreshCounter: Int
+    @Binding var insertRowCounter: Int
 
     @EnvironmentObject var vm: DatabaseViewModel
     @State private var lazyRows: [[CellValue]] = []
@@ -230,9 +271,15 @@ private struct ResultDataTable: View {
     @State private var sortDescending: Bool = true
     @State private var selectedRows: Set<Int> = []
     @State private var cachedSortedRows: [[CellValue]]? = nil
+    /// Track row-insert trigger; when changed, prepend an empty row.
+    @State private var lastInsertCounter: Int = 0
 
     private var pkColumnIndices: [Int] {
         columns.enumerated().filter { $0.element.isPrimaryKey }.map { $0.offset }
+    }
+
+    private var autoIncrementColIndices: [Int] {
+        columns.enumerated().filter { $0.element.isAutoIncrement }.map { $0.offset }
     }
 
     private var tableName: String? {
@@ -267,13 +314,31 @@ private struct ResultDataTable: View {
     }
 
     var body: some View {
-        DataTable(
+        // Handle insert row trigger: prepend an empty row.
+        if insertRowCounter != lastInsertCounter {
+            lastInsertCounter = insertRowCounter
+            var emptyRow: [CellValue] = []
+            for col in columns {
+                if col.isAutoIncrement {
+                    emptyRow.append(.null)  // auto-gen; DB fills it
+                } else if !col.nullable {
+                    // Non-nullable, non-auto: use empty string as placeholder
+                    emptyRow.append(.text(""))
+                } else {
+                    emptyRow.append(.null)
+                }
+            }
+            lazyRows.insert(emptyRow, at: 0)
+        }
+
+        return DataTable(
             columns: columns,
             rows: dataRows,
             sortColumn: sortColumn,
             sortDescending: sortDescending,
             selectedRows: selectedRows,
             pkColumnIndices: pkColumnIndices,
+            autoIncrementColIndices: autoIncrementColIndices,
             tableName: tableName,
             onSort: { col, desc in sortColumn = col; sortDescending = desc; cachedSortedRows = nil },
             onSelectedRowsChanged: { selectedRows = $0 },
