@@ -1,5 +1,5 @@
 use redb_core::db::DatabaseManager;
-use redb_core::types::{ConnStatus, DatabaseConfig, DatabaseType};
+use redb_core::types::{CellValue, ConnStatus, DatabaseConfig, DatabaseType};
 
 fn create_manager() -> DatabaseManager {
     DatabaseManager::new(DatabaseConfig::new(DatabaseType::Sqlite, ":memory:"))
@@ -122,4 +122,50 @@ fn test_sqlite_begin_commit_executed_on_connection() {
     let result = mgr.execute_query("SELECT * FROM tx_test").unwrap();
     assert_eq!(result.rows.len(), 1);
     assert_eq!(format!("{}", result.rows[0][0]), "42");
+}
+
+#[test]
+fn test_sqlite_update_by_pk_parametrized_handles_quote_injection() {
+    let mgr = DatabaseManager::new(DatabaseConfig::new(DatabaseType::Sqlite, ":memory:"));
+    mgr.connect().unwrap();
+    mgr.execute_query("CREATE TABLE u (id INTEGER PRIMARY KEY, name TEXT)").unwrap();
+    mgr.execute_query("INSERT INTO u VALUES (1, 'original')").unwrap();
+
+    // A malicious payload that would break naive string interpolation.
+    let payload = "Robert'); DROP TABLE u; --";
+    let res = mgr
+        .update_row_by_primary_key(
+            "u",
+            "name",
+            CellValue::Text(payload.to_string()),
+            vec!["id".to_string()],
+            vec![CellValue::Int(1)],
+        )
+        .expect("update should succeed via parametrized binding");
+    assert_eq!(res.rows_affected, 1);
+
+    // Table must still exist; payload must be stored verbatim.
+    let read = mgr.execute_query("SELECT name FROM u WHERE id = 1").unwrap();
+    assert_eq!(read.rows.len(), 1);
+    assert_eq!(format!("{}", read.rows[0][0]), payload);
+}
+
+#[test]
+fn test_sqlite_delete_by_pk_composite() {
+    let mgr = DatabaseManager::new(DatabaseConfig::new(DatabaseType::Sqlite, ":memory:"));
+    mgr.connect().unwrap();
+    mgr.execute_query("CREATE TABLE c (a INT, b TEXT, PRIMARY KEY(a, b))").unwrap();
+    mgr.execute_query("INSERT INTO c VALUES (1, 'x'), (1, 'y'), (2, 'x')").unwrap();
+
+    let res = mgr
+        .delete_row_by_primary_key(
+            "c",
+            vec!["a".into(), "b".into()],
+            vec![CellValue::Int(1), CellValue::Text("y".into())],
+        )
+        .unwrap();
+    assert_eq!(res.rows_affected, 1);
+
+    let remaining = mgr.execute_query("SELECT COUNT(*) FROM c").unwrap();
+    assert_eq!(format!("{}", remaining.rows[0][0]), "2");
 }

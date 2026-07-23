@@ -109,7 +109,7 @@ pub fn strip_leading_comments(sql: &str) -> &str {
 
 pub fn extract_table_names(sql: &str) -> Vec<String> {
     let dialect = GenericDialect;
-    if let Ok(stmts) = Parser::parse_sql(&dialect, sql) {
+    let raw: Vec<String> = if let Ok(stmts) = Parser::parse_sql(&dialect, sql) {
         let mut tables = Vec::new();
         for stmt in stmts {
             match &stmt {
@@ -138,7 +138,26 @@ pub fn extract_table_names(sql: &str) -> Vec<String> {
             }
         }
         tables
+    };
+    raw.into_iter().map(|t| strip_identifier_quotes(&t)).collect()
+}
+
+fn strip_identifier_quotes(raw: &str) -> String {
+    // sqlparser preserves the original quote characters in `to_string()`; strip
+    // the outermost matching pair for `"`, `` ` ``, or `[]` so downstream code
+    // (dialect-aware quote_ident, etc.) can re-quote appropriately.
+    let bytes = raw.as_bytes();
+    if bytes.len() >= 2 {
+        let first = bytes[0];
+        let last = bytes[bytes.len() - 1];
+        let matched = (first == b'"' && last == b'"')
+            || (first == b'`' && last == b'`')
+            || (first == b'[' && last == b']');
+        if matched {
+            return raw[1..raw.len() - 1].to_string();
+        }
     }
+    raw.to_string()
 }
 
 // ---------------------------------------------------------------------------
@@ -356,6 +375,14 @@ mod tests {
     fn test_extract_table_names() {
         let r = extract_table_names("SELECT * FROM users JOIN orders ON users.id = orders.user_id");
         assert!(r.contains(&"users".to_string()));
+    }
+
+    #[test]
+    fn test_extract_table_names_strips_quotes() {
+        let bt = extract_table_names("SELECT * FROM `mytable`");
+        assert_eq!(bt, vec!["mytable".to_string()]);
+        let dq = extract_table_names("SELECT * FROM \"mytable\"");
+        assert_eq!(dq, vec!["mytable".to_string()]);
     }
 
     #[test]

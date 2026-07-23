@@ -273,6 +273,78 @@ impl DatabaseManager {
         self.execute_query(&sql)
     }
 
+    // -- update / delete by primary key -----------------------------------
+
+    pub fn update_row_by_primary_key(
+        &self,
+        table: &str,
+        set_column: &str,
+        set_value: CellValue,
+        where_columns: Vec<String>,
+        where_values: Vec<CellValue>,
+    ) -> Result<QueryResult, DbError> {
+        let built = crate::sql::builder::build_update_by_pk(
+            &self.config.db_type,
+            table,
+            set_column,
+            &set_value,
+            &where_columns,
+            &where_values,
+        )?;
+        self.execute_with_params(&built.sql, &built.params)
+    }
+
+    pub fn delete_row_by_primary_key(
+        &self,
+        table: &str,
+        where_columns: Vec<String>,
+        where_values: Vec<CellValue>,
+    ) -> Result<QueryResult, DbError> {
+        let built = crate::sql::builder::build_delete_by_pk(
+            &self.config.db_type,
+            table,
+            &where_columns,
+            &where_values,
+        )?;
+        self.execute_with_params(&built.sql, &built.params)
+    }
+
+    // -- execute_with_params (parametrized mutations) ---------------------
+
+    pub fn execute_with_params(
+        &self,
+        sql: &str,
+        params: &[CellValue],
+    ) -> Result<QueryResult, DbError> {
+        let start = Instant::now();
+
+        let mut guard = self.conn.lock().unwrap();
+        let conn = guard.as_mut().ok_or(DbError::NotConnected)?;
+
+        let result = match conn {
+            #[cfg(feature = "sqlite")]
+            DbConnection::Sqlite(c) => Self::execute_with_params_sqlite(c, sql, params, start),
+            #[cfg(feature = "postgres")]
+            DbConnection::Postgres { client, runtime } => {
+                Self::execute_with_params_postgres(client, runtime, sql, params, start)
+            }
+            #[cfg(feature = "mysql")]
+            DbConnection::MySql { conn, runtime, .. } => {
+                Self::execute_with_params_mysql(conn, runtime, sql, params, start)
+            }
+            #[cfg(feature = "sqlserver")]
+            DbConnection::SqlServer { client, runtime } => {
+                Self::execute_with_params_sqlserver(client, runtime, sql, params, start)
+            }
+            #[cfg(feature = "db2")]
+            DbConnection::Db2 { conn } => {
+                let _ = params;
+                Self::execute_query_db2(conn, sql, start)
+            }
+        };
+        result.inspect(|_| self.log_query(sql, start))
+    }
+
     // -- execute_query ------------------------------------------------------
 
     pub fn execute_query(&self, sql: &str) -> Result<QueryResult, DbError> {
@@ -629,6 +701,43 @@ impl DatabaseManager {
             })
         }
     }
+
+    fn execute_with_params_sqlite(
+        conn: &mut rusqlite::Connection,
+        sql: &str,
+        params: &[CellValue],
+        start: Instant,
+    ) -> Result<QueryResult, DbError> {
+        use rusqlite::types::ToSqlOutput;
+        use rusqlite::types::Value as SqliteValue;
+        use rusqlite::ToSql;
+
+        struct P<'a>(&'a CellValue);
+        impl<'a> ToSql for P<'a> {
+            fn to_sql(&self) -> rusqlite::Result<ToSqlOutput<'_>> {
+                Ok(match self.0 {
+                    CellValue::Null => ToSqlOutput::Owned(SqliteValue::Null),
+                    CellValue::Int(v) => ToSqlOutput::Owned(SqliteValue::Integer(*v)),
+                    CellValue::Float(v) => ToSqlOutput::Owned(SqliteValue::Real(*v)),
+                    CellValue::Text(v) => ToSqlOutput::Owned(SqliteValue::Text(v.clone())),
+                    CellValue::Blob(v) => ToSqlOutput::Owned(SqliteValue::Blob(v.clone())),
+                })
+            }
+        }
+
+        let boxed: Vec<P<'_>> = params.iter().map(P).collect();
+        let refs: Vec<&dyn ToSql> = boxed.iter().map(|p| p as &dyn ToSql).collect();
+        let rows_affected = conn
+            .execute(sql, refs.as_slice())
+            .map_err(|e| DbError::QueryError { message: e.to_string() })? as u64;
+        let elapsed = start.elapsed().as_millis() as u64;
+        Ok(QueryResult {
+            columns: vec![],
+            rows: vec![],
+            rows_affected,
+            execution_time_ms: elapsed,
+        })
+    }
 }
 
 // ===========================================================================
@@ -829,6 +938,52 @@ impl DatabaseManager {
             })
         }
     }
+
+    fn execute_with_params_postgres(
+        client: &tokio_postgres::Client,
+        runtime: &tokio::runtime::Runtime,
+        sql: &str,
+        params: &[CellValue],
+        start: Instant,
+    ) -> Result<QueryResult, DbError> {
+        use tokio_postgres::types::{IsNull, ToSql, Type};
+        use bytes::BytesMut;
+        use std::error::Error as StdError;
+
+        #[derive(Debug)]
+        struct P<'a>(&'a CellValue);
+        impl<'a> ToSql for P<'a> {
+            fn to_sql(
+                &self,
+                ty: &Type,
+                out: &mut BytesMut,
+            ) -> Result<IsNull, Box<dyn StdError + Sync + Send>> {
+                match self.0 {
+                    CellValue::Null => Ok(IsNull::Yes),
+                    CellValue::Int(v) => v.to_sql(ty, out),
+                    CellValue::Float(v) => v.to_sql(ty, out),
+                    CellValue::Text(v) => v.as_str().to_sql(ty, out),
+                    CellValue::Blob(v) => v.as_slice().to_sql(ty, out),
+                }
+            }
+            fn accepts(_ty: &Type) -> bool { true }
+            tokio_postgres::types::to_sql_checked!();
+        }
+
+        let boxed: Vec<P<'_>> = params.iter().map(P).collect();
+        let refs: Vec<&(dyn ToSql + Sync)> =
+            boxed.iter().map(|p| p as &(dyn ToSql + Sync)).collect();
+        let rows_affected = runtime
+            .block_on(client.execute(sql, refs.as_slice()))
+            .map_err(|e| DbError::QueryError { message: e.to_string() })? as u64;
+        let elapsed = start.elapsed().as_millis() as u64;
+        Ok(QueryResult {
+            columns: vec![],
+            rows: vec![],
+            rows_affected,
+            execution_time_ms: elapsed,
+        })
+    }
 }
 
 // ===========================================================================
@@ -1009,6 +1164,44 @@ impl DatabaseManager {
                 execution_time_ms: elapsed,
             })
         }
+    }
+
+    fn execute_with_params_mysql(
+        conn: &mut mysql_async::Conn,
+        runtime: &tokio::runtime::Runtime,
+        sql: &str,
+        params: &[CellValue],
+        start: Instant,
+    ) -> Result<QueryResult, DbError> {
+        use mysql_async::prelude::Queryable;
+        use mysql_async::Value;
+
+        let bound: Vec<Value> = params
+            .iter()
+            .map(|p| match p {
+                CellValue::Null => Value::NULL,
+                CellValue::Int(v) => Value::Int(*v),
+                CellValue::Float(v) => Value::Double(*v),
+                CellValue::Text(v) => Value::Bytes(v.as_bytes().to_vec()),
+                CellValue::Blob(v) => Value::Bytes(v.clone()),
+            })
+            .collect();
+
+        let affected = runtime
+            .block_on(async {
+                conn.exec_drop(sql, bound).await.map_err(|e| {
+                    DbError::QueryError { message: e.to_string() }
+                })?;
+                Ok::<u64, DbError>(conn.affected_rows())
+            })?;
+
+        let elapsed = start.elapsed().as_millis() as u64;
+        Ok(QueryResult {
+            columns: vec![],
+            rows: vec![],
+            rows_affected: affected,
+            execution_time_ms: elapsed,
+        })
     }
 }
 
@@ -1233,6 +1426,57 @@ impl DatabaseManager {
                 execution_time_ms: elapsed,
             })
         }
+    }
+
+    fn execute_with_params_sqlserver(
+        client: &mut tiberius::Client<tokio_util::compat::Compat<tokio::net::TcpStream>>,
+        runtime: &tokio::runtime::Runtime,
+        sql: &str,
+        params: &[CellValue],
+        start: Instant,
+    ) -> Result<QueryResult, DbError> {
+        // Tiberius accepts &[&dyn ToSql]; each variant is owned in a matching
+        // temporary so the borrow is valid for the whole call.
+        let ints: Vec<Option<i64>> = params.iter().map(|p| match p {
+            CellValue::Int(v) => Some(*v),
+            _ => None,
+        }).collect();
+        let floats: Vec<Option<f64>> = params.iter().map(|p| match p {
+            CellValue::Float(v) => Some(*v),
+            _ => None,
+        }).collect();
+        let texts: Vec<Option<String>> = params.iter().map(|p| match p {
+            CellValue::Text(v) => Some(v.clone()),
+            _ => None,
+        }).collect();
+        let blobs: Vec<Option<Vec<u8>>> = params.iter().map(|p| match p {
+            CellValue::Blob(v) => Some(v.clone()),
+            _ => None,
+        }).collect();
+
+        let mut refs: Vec<&dyn tiberius::ToSql> = Vec::with_capacity(params.len());
+        for (i, p) in params.iter().enumerate() {
+            let r: &dyn tiberius::ToSql = match p {
+                CellValue::Null => &Option::<i32>::None,
+                CellValue::Int(_) => &ints[i],
+                CellValue::Float(_) => &floats[i],
+                CellValue::Text(_) => texts[i].as_ref().unwrap(),
+                CellValue::Blob(_) => blobs[i].as_ref().unwrap(),
+            };
+            refs.push(r);
+        }
+
+        let result = runtime
+            .block_on(async { client.execute(sql, refs.as_slice()).await })
+            .map_err(|e| DbError::QueryError { message: e.to_string() })?;
+
+        let elapsed = start.elapsed().as_millis() as u64;
+        Ok(QueryResult {
+            columns: vec![],
+            rows: vec![],
+            rows_affected: result.rows_affected().last().copied().unwrap_or(0),
+            execution_time_ms: elapsed,
+        })
     }
 }
 

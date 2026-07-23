@@ -12,6 +12,7 @@ uniffi = { version = "0.28", features = ["cli"] }
 thiserror = "1"
 tokio = { version = "1", features = ["full"] }
 tokio-postgres = { version = "0.7", optional = true }
+bytes = { version = "1", optional = true }
 mysql_async = { version = "0.34", optional = true }
 rusqlite = { version = "0.31", features = ["bundled"], optional = true }
 tiberius = { version = "0.12", default-features = false, features = ["tokio"], optional = true }
@@ -28,7 +29,7 @@ tracing = { version = "0.1", optional = true }
 [features]
 default = ["sqlite"]
 sqlite = ["rusqlite"]
-postgres = ["tokio-postgres"]
+postgres = ["tokio-postgres", "bytes"]
 mysql = ["mysql_async", "russh", "tracing"]
 sqlserver = ["tiberius", "tokio-util"]
 db2 = ["odbc-api"]

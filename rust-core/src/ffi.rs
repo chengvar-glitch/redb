@@ -52,6 +52,36 @@ impl DatabaseManager {
     pub fn execute_query(&self, sql: String) -> Result<QueryResult, DbError> {
         self.inner.lock().unwrap().execute_query(&sql)
     }
+
+    pub fn update_row_by_primary_key(
+        &self,
+        table: String,
+        set_column: String,
+        set_value: CellValue,
+        where_columns: Vec<String>,
+        where_values: Vec<CellValue>,
+    ) -> Result<QueryResult, DbError> {
+        self.inner.lock().unwrap().update_row_by_primary_key(
+            &table,
+            &set_column,
+            set_value,
+            where_columns,
+            where_values,
+        )
+    }
+
+    pub fn delete_row_by_primary_key(
+        &self,
+        table: String,
+        where_columns: Vec<String>,
+        where_values: Vec<CellValue>,
+    ) -> Result<QueryResult, DbError> {
+        self.inner.lock().unwrap().delete_row_by_primary_key(
+            &table,
+            where_columns,
+            where_values,
+        )
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -61,6 +91,15 @@ impl DatabaseManager {
 #[uniffi::export]
 pub fn split_sql(sql: String) -> Vec<String> {
     parser::split_sql(&sql)
+}
+
+#[uniffi::export]
+pub fn build_quick_view_sql(
+    db_type: DatabaseType,
+    table: String,
+    row_limit: u32,
+) -> Result<String, DbError> {
+    crate::sql::builder::build_quick_view_sql(&db_type, &table, row_limit)
 }
 
 #[uniffi::export]
