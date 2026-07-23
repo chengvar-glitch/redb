@@ -24,6 +24,9 @@ gen-bindings/
 *~
 .vscode/
 
+# OpenCode session state
+.omo/
+
 # Env
 .env
 *.local
